@@ -9,7 +9,6 @@ packages = ["src/portfoliopilot"]
 name = "portfoliopilot-ai"
 version = "0.1.0"
 description = "Auditable five-agent investment research and paper-trading system"
-license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1",
