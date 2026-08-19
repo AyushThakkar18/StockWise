@@ -89,7 +89,6 @@ council then analyzed those candidates using only evidence available by that dec
 | Periods outperforming SPY | **7 of 12** | - |
 | Sharpe ratio | 0.96 | - |
 | Maximum drawdown | -24.91% | - |
-| Simulated transaction costs | $749 | - |
 
 ### Council activity
 
