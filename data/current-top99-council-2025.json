@@ -1,0 +1,1696 @@
+{
+  "assumptions": {
+    "approval_rule": "SYNTHESIS_COMPLETE and SUPPORT",
+    "cost_bps": 5,
+    "evidence_sources": [
+      "SEC EDGAR company facts",
+      "Tiingo end-of-day prices"
+    ],
+    "rebalance_every_sessions": 21
+  },
+  "ending_equity": 123108.92955262169,
+  "evaluation": "2025",
+  "excluded": [
+    "SNDK"
+  ],
+  "metrics": {
+    "alpha": 0.11198746108685144,
+    "annual_turnover": 15.282867037662141,
+    "annualized_return": 0.23267673985216653,
+    "benchmark_total_return": 0.17884702894088655,
+    "benchmark_win_21_session_rate": 0.5833333333333334,
+    "benchmark_wins_21_session_periods": 7.0,
+    "beta": 0.7037786063744581,
+    "calmar": 0.9342063388781808,
+    "daily_benchmark_win_rate": 0.5140562248995983,
+    "decision_dates": 249.0,
+    "downside_capture": 1.0153790337999797,
+    "evaluated_21_session_periods": 12.0,
+    "excess_return": 0.05224226658533038,
+    "expected_shortfall_95": 0.037027707188301215,
+    "information_ratio": 0.2600949302375297,
+    "max_drawdown": -0.24906354214163307,
+    "positive_21_session_periods": 9.0,
+    "positive_21_session_rate": 0.75,
+    "sharpe": 0.96047383906903,
+    "sortino": 1.34743938605859,
+    "total_return": 0.23108929552621693,
+    "tracking_error": 0.2196194390951595,
+    "trading_costs": 749.0170031590815,
+    "upside_capture": 1.0679571122184406,
+    "value_at_risk_95": 0.02531201217442569,
+    "volatility": 0.25231294690867384
+  },
+  "monthly_council": {
+    "2025-01-02:ANET": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:AVGO": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:AXP": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:BKNG": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-01-02:BLK": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:BMY": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-01-02:COF": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-01-02:CRM": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-01-02:CSCO": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:GILD": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:GS": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-01-02:MRVL": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:MS": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:NFLX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:NOW": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-01-02:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:TSLA": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-01-02:V": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:WFC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-01-02:WMT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:ABT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:ADI": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:AMZN": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:ANET": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:AVGO": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:AXP": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-02-04:C": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:COF": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:GE": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:GLW": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:IBM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:JPM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:META": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-02-04:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:SBUX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:SCHW": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:TMUS": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-02-04:TSLA": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-02-04:WFC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-02-04:WMT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:ABBV": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-03-06:ABT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:AXP": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:BKNG": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:BRK-B": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-03-06:C": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:GILD": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-03-06:GLW": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:IBM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:MS": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:MSFT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:PM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:SBUX": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-03-06:T": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-03-06:TMUS": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-03-06:V": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:WELL": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:WFC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-03-06:WMT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:AAPL": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:ABBV": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-04-04:ABT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:AMGN": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-04-04:BMY": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-04-04:BRK-B": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-04-04:CB": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:COST": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:CSCO": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:DE": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:GEV": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:GILD": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:IBM": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-04-04:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:PM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:T": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-04-04:TMUS": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-04-04:V": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:VRTX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-04-04:WELL": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:ABT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:APH": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:AVGO": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:AXP": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:BKNG": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-05-06:BRK-B": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-05-06:COF": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:GEV": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:GS": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-05-06:NEM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:NFLX": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-05-06:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:PM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:T": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-05-06:TMUS": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-05-06:UBER": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:V": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:WELL": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:WFC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-05-06:WMT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:ABT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:APH": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:AVGO": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:AXP": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:C": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:COF": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-06-05:CRWD": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-06-05:GE": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-06-05:GEV": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:IBM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:MSFT": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-06-05:NEM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:NFLX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:PM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:RTX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:STX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:UBER": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:V": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-06-05:WELL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-07-08:ABT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:APH": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-07-08:C": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-07-08:COF": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:CRWD": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-07-08:GEV": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:GS": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-07-08:IBM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:JPM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:LRCX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:META": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-07-08:MS": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:MU": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:NEM": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:ORCL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-07-08:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:RTX": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-07-08:STX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-07-08:UBER": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-07-08:WDC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:ANET": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:APH": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-08-06:AVGO": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-08-06:AXP": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-08-06:BA": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-08-06:BKNG": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:C": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-08-06:CAT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:COF": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:GEV": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:GLW": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:MSFT": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-08-06:NEM": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-08-06:NVDA": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-08-06:ORCL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-08-06:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:SCHW": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:STX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:WDC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-08-06:WELL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-09-05:AAPL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-09-05:ADI": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-09-05:AMD": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-09-05:AMZN": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:ANET": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:APH": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-09-05:AVGO": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-09-05:AXP": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:C": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:COF": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:GE": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:GEV": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:GLW": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-09-05:MS": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:NEM": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-09-05:NVDA": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:STX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:TSLA": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-09-05:WDC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:AAPL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-10-06:ABBV": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:ADI": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:AMAT": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-10-06:AMD": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-10-06:ANET": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:APH": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-10-06:AXP": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:C": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:CAT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:GLW": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:KLAC": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-10-06:LRCX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:MU": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-10-06:NEM": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-10-06:ORCL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-10-06:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:STX": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-10-06:TSLA": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-10-06:WDC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:ADI": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:AMAT": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:AMD": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:ANET": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:APH": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:AVGO": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:AXP": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:C": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:GE": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:GOOG": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:GOOGL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:LRCX": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:MU": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-11-04:NEM": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:NVDA": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-11-04:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:RTX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:STX": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-11-04:TSLA": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-11-04:WDC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:AMAT": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "CONCERN"
+    },
+    "2025-12-04:AMD": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:APH": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:AVGO": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:C": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:CAT": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:GLW": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:GOOG": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:GOOGL": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:INTC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:KLAC": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:LRCX": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:MRVL": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:MU": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:NEM": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:PLTR": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:STX": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:TSLA": {
+      "blockers": [],
+      "route": "SYNTHESIS_COMPLETE",
+      "verdict": "SUPPORT"
+    },
+    "2025-12-04:WDC": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    },
+    "2025-12-04:WELL": {
+      "blockers": [
+        "AUDIT_CHECK_FAILED",
+        "UNRESOLVED_HIGH_CONTRADICTION"
+      ],
+      "route": "ABSTAIN_AUDIT_BLOCKED",
+      "verdict": null
+    }
+  },
+  "stocks_tested": 99,
+  "strategy": "ai_ranker_plus_research_council",
+  "universe_snapshot": "2026-08-19"
+}

@@ -1,0 +1,4 @@
+services:
+  api:
+    environment:
+      PORTFOLIOPILOT_REQUIRE_API_TOKEN: "true"

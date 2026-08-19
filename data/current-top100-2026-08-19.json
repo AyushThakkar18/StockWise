@@ -1,0 +1,20 @@
+{
+  "as_of": "2026-08-19",
+  "count": 100,
+  "definition": "Current top 100 S&P 500 securities by SPY holding weight",
+  "source": "https://www.slickcharts.com/sp500",
+  "survivorship_safe": false,
+  "symbols": [
+    "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "GOOG", "AVGO", "META", "TSLA", "LLY",
+    "MU", "BRK-B", "JPM", "WMT", "AMD", "V", "XOM", "JNJ", "INTC", "MA",
+    "ABBV", "BAC", "CSCO", "COST", "LRCX", "PLTR", "AMAT", "ORCL", "CVX", "CAT",
+    "GE", "KO", "UNH", "MS", "HD", "PG", "MRK", "NFLX", "PANW", "RTX",
+    "GS", "DELL", "PM", "GEV", "WFC", "KLAC", "TXN", "ANET", "SNDK", "C",
+    "AMGN", "AXP", "LIN", "IBM", "TMO", "CRWD", "STX", "VZ", "APH", "ABT",
+    "TMUS", "MRVL", "SCHW", "PEP", "MCD", "ADI", "NEE", "DIS", "BLK", "UNP",
+    "GILD", "BA", "WDC", "T", "WELL", "TJX", "ETN", "QCOM", "DE", "CRM",
+    "BKNG", "COP", "PFE", "UBER", "DHR", "LMT", "GLW", "ISRG", "COF", "BMY",
+    "VRTX", "CB", "PLD", "PH", "SYK", "NEM", "SPGI", "LOW", "NOW", "SBUX"
+  ],
+  "warning": "Fixed current universe; historical results have survivorship and look-ahead selection bias."
+}

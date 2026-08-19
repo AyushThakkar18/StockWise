@@ -1,0 +1,41 @@
+services:
+  api:
+    build: .
+    env_file: .env
+    environment:
+      PORTFOLIOPILOT_DB_PATH: /app/data/portfoliopilot.db
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - portfoliopilot_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    build: .
+    command: ["python", "-m", "portfoliopilot.worker"]
+    env_file: .env
+    environment:
+      PORTFOLIOPILOT_DB_PATH: /app/data/portfoliopilot.db
+    volumes:
+      - portfoliopilot_data:/app/data
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  backup:
+    build: .
+    command: ["python", "-m", "portfoliopilot.backup", "--source", "/app/data/portfoliopilot.db", "--destination", "/app/backups"]
+    profiles: ["maintenance"]
+    volumes:
+      - portfoliopilot_data:/app/data:ro
+      - ./backups:/app/backups
+
+volumes:
+  portfoliopilot_data:

@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+*.db
+data/*
+!data/current-top100-2026-08-19.json
+!data/current-top100-ai-final.json
+!data/current-top100-ai-final.md
+!data/current-top99-council-2025.json
+private_data/
