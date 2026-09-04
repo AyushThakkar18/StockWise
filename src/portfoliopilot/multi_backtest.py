@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Protocol
 
 from .backtest import BacktestPoint, performance_metrics, total_return_ratio
-from .market_data import DailyBar
+from .market_data import DailyBar, effective_split_coefficient
 
 
 class CrossSectionalStrategy(Protocol):
@@ -64,6 +64,18 @@ class MultiAssetResult:
     strategy: str
     points: tuple[MultiAssetPoint, ...]
     metrics: dict[str, float]
+    transactions: tuple[Transaction, ...] = ()
+
+
+@dataclass(frozen=True)
+class Transaction:
+    session: date
+    symbol: str
+    kind: str
+    quantity: Decimal
+    price: Decimal
+    cash_amount: Decimal
+    cost: Decimal = Decimal(0)
 
 
 class MultiAssetBacktester:
@@ -90,20 +102,28 @@ class MultiAssetBacktester:
         histories: dict[str, list[DailyBar]] = {symbol: [] for symbol in sorted(universe)}
         benchmark_shares = self.starting_cash / benchmark_index[sessions[0]].open
         benchmark_cash = Decimal(0)
-        points = []
+        points, transactions = [], []
         for index, session in enumerate(sessions):
             if index:
                 for symbol, quantity in shares.items():
                     current = indexed[symbol][session]
-                    shares[symbol] = quantity * current.split_coefficient
-                    cash += shares[symbol] * current.dividend
+                    shares[symbol] = quantity * effective_split_coefficient(current)
+                    dividend = shares[symbol] * current.dividend
+                    cash += dividend
+                    if dividend:
+                        transactions.append(Transaction(
+                            session, symbol, "DIVIDEND", shares[symbol], current.dividend, dividend,
+                        ))
                 current_benchmark = benchmark_index[session]
-                benchmark_shares *= current_benchmark.split_coefficient
+                benchmark_shares *= effective_split_coefficient(current_benchmark)
                 benchmark_cash += benchmark_shares * current_benchmark.dividend
             opens = {symbol: indexed[symbol][session].open for symbol in shares}
             turnover, cost = Decimal(0), Decimal(0)
             if pending_targets is not None:
-                cash, shares, turnover, cost = self._rebalance(cash, shares, opens, pending_targets)
+                cash, shares, turnover, cost, trades = self._rebalance(
+                    session, cash, shares, opens, pending_targets,
+                )
+                transactions.extend(trades)
             closes = {symbol: indexed[symbol][session].close for symbol in shares}
             equity = cash + sum((shares[symbol] * closes[symbol] for symbol in shares), Decimal(0))
             weights = {
@@ -128,7 +148,7 @@ class MultiAssetBacktester:
         metrics = performance_metrics(metric_points)
         years = max((sessions[-1] - sessions[0]).days / 365.25, 1 / 252)
         metrics["annual_turnover"] = sum(float(point.turnover) for point in points) / years
-        return MultiAssetResult(strategy.name, tuple(points), metrics)
+        return MultiAssetResult(strategy.name, tuple(points), metrics, tuple(transactions))
 
     def run_window(
         self, universe: dict[str, tuple[DailyBar, ...]], benchmark: tuple[DailyBar, ...],
@@ -161,22 +181,28 @@ class MultiAssetBacktester:
         first = evaluation_sessions[0]
         benchmark_shares = self.starting_cash / benchmark_index[first].open
         benchmark_cash = Decimal(0)
-        points = []
+        points, transactions = [], []
         for index, session in enumerate(evaluation_sessions):
             if index:
                 for symbol, quantity in shares.items():
                     current = indexed[symbol][session]
-                    shares[symbol] = quantity * current.split_coefficient
-                    cash += shares[symbol] * current.dividend
+                    shares[symbol] = quantity * effective_split_coefficient(current)
+                    dividend = shares[symbol] * current.dividend
+                    cash += dividend
+                    if dividend:
+                        transactions.append(Transaction(
+                            session, symbol, "DIVIDEND", shares[symbol], current.dividend, dividend,
+                        ))
                 current_benchmark = benchmark_index[session]
-                benchmark_shares *= current_benchmark.split_coefficient
+                benchmark_shares *= effective_split_coefficient(current_benchmark)
                 benchmark_cash += benchmark_shares * current_benchmark.dividend
             opens = {symbol: indexed[symbol][session].open for symbol in shares}
             turnover, cost = Decimal(0), Decimal(0)
             if pending_targets is not None:
-                cash, shares, turnover, cost = self._rebalance(
-                    cash, shares, opens, pending_targets,
+                cash, shares, turnover, cost, trades = self._rebalance(
+                    session, cash, shares, opens, pending_targets,
                 )
+                transactions.extend(trades)
             closes = {symbol: indexed[symbol][session].close for symbol in shares}
             equity = cash + sum((shares[symbol] * closes[symbol] for symbol in shares), Decimal(0))
             weights = {
@@ -200,12 +226,12 @@ class MultiAssetBacktester:
         metrics = performance_metrics(metric_points)
         years = max((evaluation_sessions[-1] - evaluation_sessions[0]).days / 365.25, 1 / 252)
         metrics["annual_turnover"] = sum(float(point.turnover) for point in points) / years
-        return MultiAssetResult(strategy.name, tuple(points), metrics)
+        return MultiAssetResult(strategy.name, tuple(points), metrics, tuple(transactions))
 
     def _rebalance(
-        self, cash: Decimal, shares: dict[str, Decimal], opens: dict[str, Decimal],
+        self, session: date, cash: Decimal, shares: dict[str, Decimal], opens: dict[str, Decimal],
         targets: dict[str, Decimal],
-    ) -> tuple[Decimal, dict[str, Decimal], Decimal, Decimal]:
+    ) -> tuple[Decimal, dict[str, Decimal], Decimal, Decimal, tuple[Transaction, ...]]:
         if any(weight < 0 for weight in targets.values()) or sum(targets.values()) > Decimal(1) + Decimal("1e-12"):
             raise ValueError("targets must be long-only and fully funded")
         equity = cash + sum((shares[symbol] * opens[symbol] for symbol in shares), Decimal(0))
@@ -214,10 +240,12 @@ class MultiAssetBacktester:
         traded = sum((abs(delta) * opens[symbol] for symbol, delta in deltas.items()), Decimal(0))
         cost = traded * self.cost_bps / Decimal(10_000)
         # Execute sells first, then scale purchases to preserve non-negative cash after costs.
+        executed: dict[str, Decimal] = {}
         for symbol, delta in deltas.items():
             if delta < 0:
                 cash -= delta * opens[symbol]
                 shares[symbol] += delta
+                executed[symbol] = delta
         cash -= cost
         requested_buys = sum(
             (delta * opens[symbol] for symbol, delta in deltas.items() if delta > 0), Decimal(0)
@@ -225,10 +253,17 @@ class MultiAssetBacktester:
         scale = min(Decimal(1), max(Decimal(0), cash / requested_buys)) if requested_buys else Decimal(1)
         for symbol, delta in deltas.items():
             if delta > 0:
-                executed = delta * scale
-                cash -= executed * opens[symbol]
-                shares[symbol] += executed
-        return cash, shares, traded / equity if equity else Decimal(0), cost
+                filled = delta * scale
+                cash -= filled * opens[symbol]
+                shares[symbol] += filled
+                executed[symbol] = filled
+        actual_notional = sum((abs(qty) * opens[symbol] for symbol, qty in executed.items()), Decimal(0))
+        transactions = tuple(Transaction(
+            session=session, symbol=symbol, kind="BUY" if quantity > 0 else "SELL",
+            quantity=abs(quantity), price=opens[symbol], cash_amount=abs(quantity) * opens[symbol],
+            cost=cost * abs(quantity) * opens[symbol] / actual_notional if actual_notional else Decimal(0),
+        ) for symbol, quantity in sorted(executed.items()) if quantity)
+        return cash, shares, traded / equity if equity else Decimal(0), cost, transactions
 
     @staticmethod
     def _align(

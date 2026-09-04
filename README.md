@@ -1,147 +1,110 @@
 # StockWise
 
-**An evidence-grounded, five-agent investment research council built with LangGraph and LangChain.**
+**A multi-agent investment research and portfolio backtesting system.**
 
-StockWise coordinates specialized LLM agents to evaluate equities using point-in-time SEC financial
-facts and lagged market evidence. The agents do not place trades directly: deterministic software
-validates their citations, checks for contradictions, enforces abstention, and controls portfolio
-construction and next-session execution.
+StockWise combines point-in-time quantitative features, Kronos time-series forecasts, structured
+LLM reviews, deterministic portfolio rules, and next-open execution. It is research software: it
+does not place live trades, provide investment advice, or guarantee profit.
 
-> Research and educational software only. It does not provide investment advice, guarantee profit,
-> or place live trades.
+## Results at a glance
 
-## Multi-agent council
+The retained strategy was evaluated over both a 2025 window and a longer 2023-2025 window. Each
+selected stock receives a 5% target weight, unused allocation remains invested in SPY, and both
+simulations include 5 basis points of transaction costs.
 
-The council separates research into five explicit responsibilities:
+| Evaluation window | Monthly decisions | Strategy return | Profit on $1K paper portfolio | Sharpe | Max drawdown |
+|---|---:|---:|---:|---:|---:|
+| **2025** | 12 | **17.49%** | **$174.94** | 0.87 | -20.53% |
+| **2023-2025** | 36 | **68.34%** | **$683.44** | 1.20 | -20.10% |
 
-1. **Business-change agent** - identifies material changes in financial and operating performance.
-2. **Catalyst agent** - analyzes dated events and potential drivers without presenting uncertainty as fact.
-3. **Failure-mode agent** - independently investigates leverage, cyclicality, concentration, and downside risk.
-4. **Portfolio-context agent** - evaluates volatility, factor exposure, and portfolio-level implications.
-5. **Synthesis agent** - reconciles audited specialist reports into `SUPPORT`, `CONCERN`, or `ABSTAIN`.
+These are simulated diagnostic results from a paper portfolio, not evidence of expected future
+performance.
 
-The first four agents run concurrently. The fifth agent is invoked only after deterministic evidence
-and contradiction checks pass.
+See the [readable decision report](results/kronos-llm-three-policies-2025.md) and
+[machine-readable results](results/kronos-llm-three-policies-2025.json).
 
-## System architecture
+## How it works
 
 ```text
-100-stock research universe
-          |
-          v
-Anonymous lagged features
-          |
-          v
-Candidate-ranking LLM -> monthly Top-20 research queue
-                                  |
-                   point-in-time evidence packet
-                      / SEC facts + Tiingo data
-                                  |
-          +-----------------------+-----------------------+
-          |                       |                       |
-          v                       v                       v
- Business-change agent      Catalyst agent        Failure-mode agent
-          |                                               |
-          +--------------- Portfolio-context agent -------+
-                                  |
-                      deterministic audit layer
-             identity | citations | source diversity | coverage
-                  failures | high-severity contradictions
-                         /                        \
-                        v                          v
-              fifth synthesis agent         fail-safe abstention
-                        |
-             SUPPORT / CONCERN / ABSTAIN
-                        |
-                 SUPPORT verdict only
-                        |
-          risk-controlled next-open simulation
+Point-in-time eligible S&P 500 members
+                  |
+       deterministic Top 100
+  momentum | trend | growth | risk data
+                  |
+         Kronos Top 50
+       relative to SPY forecast
+                  |
+     +------------+------------+
+     |            |            |
+ technical     quality       risk
+ LLM agent     LLM agent     LLM agent
+     +------------+------------+
+                  |
+        structured synthesis agent
+           selects 0-20 stocks
+                  |
+       deterministic allocation
+   5% stock slots; unused weight -> SPY
+                  |
+        next-session-open execution
 ```
 
-### Why the audit layer matters
+The LLM receives anonymous, lagged numeric packets rather than company names. It cannot set
+position weights or bypass portfolio constraints. Structured Pydantic outputs are validated and
+hash-cached so interrupted runs resume without repeating completed API calls.
 
-Every specialist must return a schema-validated Pydantic object and cite supplied evidence IDs.
-Deterministic code then verifies:
+## Live paper-trading council
 
-- all four specialist roles completed;
-- symbol and decision timestamps match;
-- every factual finding cites an allowed evidence record;
-- at least two distinct data sources are present;
-- at least 75% of curated evidence is referenced;
-- no unresolved high-severity contradiction remains; and
-- no specialist or synthesis call failed.
+The prospective live path uses named stocks because it does not make historical decisions. Every
+candidate is isolated in its own request and reviewed by four specialists—market/technical,
+business/fundamentals, news/filings/catalysts, and risk/sentiment—followed by a fifth synthesis
+agent. Ordinary code validates candidate identity and evidence citations, combines specialist
+scores, ranks the candidates, and enforces portfolio constraints.
 
-If any requirement fails, the graph routes to abstention. This prevents a fluent but unsupported LLM
-response from reaching portfolio construction.
+Each immutable decision dossier contains the evidence available at the decision time, every agent's
+score, confidence, supporting points, concerns, citations, synthesis discussion, deterministic
+ranking, selection outcome, and a human-readable Markdown report. The same structured dossier is
+designed to drive the future dashboard, preventing displayed explanations from diverging from the
+record used to construct paper orders.
 
-## 2025 council results
-
-The council was evaluated over calendar year 2025. Each month, a candidate-ranking LLM reviewed
-anonymous lagged features across 100 stocks and produced a Top-20 research queue. The multi-agent
-council then analyzed those candidates using only evidence available by that decision date.
-
-| Metric | Five-agent council | SPY benchmark |
-|---|---:|---:|
-| Simulated return | **23.11%** | 17.88% |
-| Profit on $100,000 | **$23,109** | $17,885 |
-| Excess return | **+5.22 percentage points** | - |
-| Positive 21-session periods | **9 of 12** | - |
-| Periods outperforming SPY | **7 of 12** | - |
-| Sharpe ratio | 0.96 | - |
-| Maximum drawdown | -24.91% | - |
-
-### Council activity
-
-| Decision outcome | Count |
-|---|---:|
-| Candidate reviews | 240 |
-| `SUPPORT` | 64 |
-| `CONCERN` | 27 |
-| Fail-safe abstentions | 149 |
-| Decisions reaching synthesis | 91 |
-| Execution errors | 0 |
-
-The council beat SPY in this simulation, but its strict filtering produced a concentrated portfolio
-and did not eliminate drawdown risk. The result demonstrates orchestrated analysis and controlled
-abstention, not guaranteed investment performance.
-
-See the [complete council output](data/current-top100-council-2025.json) and
-[frozen research universe](data/current-top100-2026-08-19.json).
+The default forward-testing path uses an internal, broker-free simulator. It freezes the after-close
+council dossier and target weights, then executes once against supplied next-session opening prices
+with 2 bps of slippage, 5 bps of transaction costs, and a small execution-cost reserve. Orders,
+fills, cost basis, realized and unrealized P&L, positions, and portfolio snapshots are append-only.
+The optional Alpaca adapter remains disabled and cannot address Alpaca's live-trading domain.
 
 ## Backtest protocol
 
-- Evaluation window: January 2 through December 31, 2025.
-- Universe: 100-stock research universe.
-- Research frequency: every 21 trading sessions.
-- Evidence: SEC company facts filed by the decision date and lagged Tiingo end-of-day prices.
-- Execution: close-derived decisions execute at the following session's open.
-- Portfolio: long-only, cash-funded, equal weight across council-supported candidates.
-- Costs: 5 basis points per traded notional.
-- Benchmark: SPY total return including dividends and splits.
-- Reliability: cached LLM decisions, immutable evidence records, and deterministic audit routes.
+- Evaluations: January through December 2025 (12 decisions) and January 2023 through December 2025
+  (36 decisions).
+- Warm-up data begins January 2024 for the one-year run and December 2021 for the three-year run.
+- Universe: point-in-time S&P 500 membership, reduced deterministically to 100 candidates.
+- Forecasting: Kronos-base ranks the deterministic candidates to 50.
+- Council: technical, quality, and risk specialists followed by structured synthesis.
+- Portfolio: zero to 20 long positions, rebalanced every 21 trading sessions.
+- Execution: decisions formed after the close and executed at the next session's open.
+- Frictions: 5 basis points per traded notional; dividends and splits are incorporated.
 
-### Important limitation
+## Reliability boundaries
 
-The 100-stock universe was derived from a current Top-100 snapshot dated August 2026. The test
-therefore contains survivorship bias even though the SEC and market evidence supplied to the agents
-was point-in-time constrained. The result must be described as a simulated, survivorship-biased
-research experiment.
+- The strategy only consumes information available by each decision date.
+- Missing execution prices fail closed rather than silently dropping trades.
+- LLM outputs are schema-validated, candidate-bound, anonymous, and reproducibly cached.
+- Portfolio weights are assigned by deterministic code rather than the LLM.
+- Some unavailable historical securities leave residual survivorship bias.
+- The Kronos checkpoint's training cutoff is not documented precisely enough for a causal claim.
+- The project observed 2025 while developing the system, so this is not an untouched holdout.
+- Even the three-year backtest cannot establish statistical significance or future profitability.
 
-## Engineering highlights
+## Technology
 
-- LangGraph `StateGraph` with parallel specialist fan-out and conditional synthesis/abstention paths.
-- LangChain structured outputs backed by immutable Pydantic research contracts.
-- SQLite graph checkpoints and hash-cached model decisions for restart-safe execution.
-- Prompt-injection-resistant evidence handling: source text is treated as untrusted data.
-- Point-in-time SEC adapter that excludes filings submitted after the decision date.
-- Deterministic citation, coverage, identity, source-diversity, and contradiction audits.
-- Multi-asset next-open simulator with splits, dividends, transaction costs, and SPY-relative metrics.
-- FastAPI, durable background jobs, health telemetry, backups, Docker, and GitHub Actions.
-- **99 automated tests** covering orchestration, evidence integrity, accounting, execution, and security.
+Python, Pydantic, OpenAI structured outputs, Kronos/PyTorch, FastAPI, SQLite, Docker, pytest, Ruff,
+and GitHub Actions.
 
-## Quick start
+## Run locally
 
-Requirements: Python 3.11+ and optionally Docker.
+Requirements: Python 3.11+, Docker optional, an OpenAI API key, SEC user-agent configuration, and
+the private historical price cache described in `DATA_SOURCES.md`.
 
 ```powershell
 python -m venv .venv
@@ -149,56 +112,112 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 Copy-Item .env.example .env
 python -m pytest -q
-python -m uvicorn portfoliopilot.api:app --reload
 ```
 
-Configure `.env` and never commit it:
-
-```dotenv
-OPENAI_API_KEY=your_key
-OPENAI_MODEL=gpt-4o-mini
-TIINGO_API_KEY=your_key
-SEC_USER_AGENT=StockWise your-email@example.com
-PORTFOLIOPILOT_API_TOKEN=a_long_random_secret
-```
-
-The SEC contact is sent only in EDGAR request headers. Interactive API documentation is available at
-`http://127.0.0.1:8000/docs`.
-
-## Repository map
-
-```text
-src/portfoliopilot/
-  langgraph_research.py       five-agent graph, checkpoints, and routing
-  openai_research.py          structured specialist and synthesis adapters
-  research.py                 deterministic evidence and contradiction audits
-  research_contracts.py       typed agent reports, findings, audits, and verdicts
-  sec_edgar.py                point-in-time SEC company-facts evidence
-  evidence.py                 evidence curation and temporal validation
-  ai_ranking.py               anonymous candidate-ranking stage
-  point_in_time.py            council gate and dynamic-universe controls
-  multi_backtest.py           next-open multi-asset simulator
-  api.py / worker.py          API and durable background processing
-tests/                        99 automated tests
-data/                         published council result and frozen universe
-```
-
-## Docker
+Run or resume the retained experiment:
 
 ```powershell
-docker compose up --build -d
+portfoliopilot-kronos-llm-allocation
 ```
 
-See [deployment guidance](docs/DEPLOYMENT.md) for server topology, secret handling, persistence, and
-API-token enforcement.
+Completed Kronos forecasts and LLM responses are cached locally. API keys and private datasets are
+excluded from version control.
 
-## Current limitations and next steps
+Run the same monthly strategy over 2023-2025 with GPU stability controls:
 
-- Replace the current-constituent universe with complete historical membership, delisting prices,
-  and terminal returns to remove survivorship bias.
-- Add licensed point-in-time news, management commentary, estimates, and industry-specific evidence.
-- Evaluate the council across additional market regimes and pre-register model/prompt changes.
-- Forward-test council decisions through paper trading before considering real-money use.
+```powershell
+.\scripts\run-three-year-council-stable.ps1
+```
 
-More detail: [architecture](docs/ARCHITECTURE.md) | [product](docs/PRODUCT.md) |
-[data sources](DATA_SOURCES.md) | [deployment](docs/DEPLOYMENT.md) | [roadmap](docs/ROADMAP.md)
+The launcher verifies CUDA, prevents Windows sleep while active, recycles Kronos GPU allocations
+every ten uncached forecasts, inserts short cooling intervals, and writes separate restart-safe
+three-year results and logs. Use `-Device cpu` when CUDA is unavailable.
+
+## Project layout
+
+```text
+src/portfoliopilot/kronos_llm_allocation_backtest.py  experiment runner and report
+src/portfoliopilot/kronos_llm_selection.py            selection and allocation rules
+src/portfoliopilot/kronos_forecast.py                 Kronos inference and caching
+src/portfoliopilot/openai_bounded_agents.py           specialist structured reviews
+src/portfoliopilot/openai_council_selector.py         bounded synthesis selection
+src/portfoliopilot/live_council.py                    live five-agent audit contracts and ranking
+src/portfoliopilot/openai_live_council.py             isolated named-stock structured LLM calls
+src/portfoliopilot/live_evidence.py                    timestamped, candidate-bound news evidence
+src/portfoliopilot/alpaca_paper.py                     paper-only broker and news client
+src/portfoliopilot/alpaca_execution.py                 deterministic 5% paper rebalancing
+src/portfoliopilot/paper_dashboard.py                  dashboard decision and trade read models
+src/portfoliopilot/point_in_time.py                    next-open portfolio simulator
+tests/test_kronos_llm_selection.py                     allocation and council tests
+```
+
+Paper execution requires separate paper-account credentials and an explicit enable flag:
+
+```dotenv
+ALPACA_PAPER_ENABLED=false
+ALPACA_PAPER_KEY_ID=
+ALPACA_PAPER_SECRET_KEY=
+```
+
+Keep the flag false while validating evidence and decisions in shadow mode. The dashboard read
+endpoints are `/dashboard/overview`, `/dashboard/decisions`, and `/dashboard/trades`.
+
+The two broker-free operational endpoints are `/paper/council/freeze` after a session closes and
+`/paper/council/execute-next-open` after the following session's opening prices are available. Both
+are idempotent: a frozen decision cannot be changed and a completed session cannot execute twice.
+
+Start the local API and dashboard:
+
+```powershell
+python -m uvicorn portfoliopilot.api:app --host 127.0.0.1 --port 8000
+```
+
+Open `http://127.0.0.1:8000/dashboard`. The responsive dashboard shows portfolio equity, total,
+realized and unrealized P&L, cash, current positions, buy/sell fills, and the complete contribution
+from every council agent. `/operations/status` reports the durable job queue and execution mode.
+
+`MonthlyCouncilScheduler` enqueues one idempotent council decision after the final closed exchange
+session of each month and binds it to the next session's open. It never backfills a missed decision
+with information that became available later.
+
+Run the complete forward-paper service and dashboard with one command:
+
+```powershell
+.\scripts\run-live-paper.ps1 -Device auto
+```
+
+For the first portfolio only, initialize immediately from the latest completed market close:
+
+```powershell
+.\scripts\run-live-paper.ps1 -Device auto -InitializeFromLatestClose
+```
+
+The flag refuses to run if the month already has a frozen decision. After initialization, the same
+process remains active to execute at the next open and continue normal monthly monitoring.
+
+The launcher prevents Windows sleep, starts the dashboard, and checks every 15 minutes. The service
+does nothing before the US close or when the current month already has a frozen decision. When a new
+month is due, it refreshes current S&P 500 histories, runs deterministic Top 100, Kronos Top 50, and
+the five-agent council. It freezes the result and executes it once the next session's opening prices
+are available. Between rebalances it refreshes marks so the dashboard shows current simulated P&L.
+Logs are written to `private_data/live/`.
+
+Run a single readiness cycle without leaving the service open:
+
+```powershell
+python -m portfoliopilot.live_service --once --device auto
+```
+
+Before the close this reports `WAIT_FOR_AFTER_CLOSE` without invoking Kronos or the LLM. A monthly
+research cycle requires `OPENAI_API_KEY`, `SEC_USER_AGENT`, the Kronos checkout under
+`private_data/Kronos`, and network access to Yahoo Finance and SEC EDGAR. Fifty candidates receive
+four isolated specialist reviews and one synthesis review; four candidates are processed in
+parallel. Timestamped, ticker-bound Yahoo headlines provide broker-free news and sentiment evidence;
+future headlines are rejected. All completed responses and Kronos forecasts are restart-safe cached.
+
+## Resume-safe description
+
+- Built a restart-safe multi-agent equity research pipeline combining point-in-time factor
+  screening, Kronos forecasts, structured LLM reviews, and deterministic portfolio controls.
+- Developed a transaction-cost-aware 2025 backtest across point-in-time S&P 500 members; the
+  strategy returned 17.49% while preserving complete monthly decision and attribution audits.

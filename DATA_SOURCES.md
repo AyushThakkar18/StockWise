@@ -18,6 +18,21 @@ The optional long-history adapter uses Tiingo's end-of-day API under the user's 
 
 The adapter stores raw OHLCV, `divCash`, and `splitFactor` with retrieval vintage. It deliberately does not use currently adjusted historical OHLC as point-in-time truth. The backtester applies split factors and cash dividends, although ex-date cash credit remains an approximation of payment timing. Tiingo also does not by itself provide historical universe membership sufficient to eliminate survivorship bias.
 
+## Yahoo Finance fallback
+
+The optional `portfoliopilot-yahoo-download` command uses `yfinance` to retrieve daily prices,
+adjusted closes, volumes, dividends, and splits in parallel batches. It normalizes records into the
+same `DailyBar` JSON schema as other providers, writes them only to `private_data/prices-yahoo`,
+and retains the provider and retrieval vintage. Yahoo data never silently overwrites Tiingo data.
+Yahoo historical OHLC is already split-normalized, so the simulator records split events for audit
+but does not multiply shares again when consuming Yahoo bars.
+
+This is a free, best-effort fallback for personal research, not an official or institutional-grade
+feed. Yahoo can remove data for acquired or delisted tickers, and current adjusted history is not
+point-in-time corporate-action truth. Failed historical symbols remain explicit; successor prices
+must not be substituted without a verified security-identity mapping. Do not commit or redistribute
+the cache, and review Yahoo's current terms before changing its use.
+
 ## Historical S&P 500 membership
 
 The point-in-time universe adapter uses the MIT-licensed `fja05680/sp500` updated historical components dataset, retrieved at runtime from its public GitHub repository. It determines membership as of each rebalance date; future rows are never consulted. Coverage begins in 1996. The cached file's SHA-256 fingerprint is included in the dataset version recorded with each run. Historical ticker annotations are normalized for provider lookup, but corporate renames and provider-symbol mismatches can still occur and must be logged rather than silently substituted.

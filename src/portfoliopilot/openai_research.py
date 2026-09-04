@@ -25,9 +25,12 @@ class OpenAIResearchRunner:
         from langchain_openai import ChatOpenAI
 
         self.model = model
-        self.client = ChatOpenAI(
-            api_key=api_key, model=model, temperature=0,
-        ).with_structured_output(ResearchReport, method="json_schema")
+        options = {"api_key": api_key, "model": model}
+        if model.startswith("gpt-4"):
+            options["temperature"] = 0
+        self.client = ChatOpenAI(**options).with_structured_output(
+            ResearchReport, method="json_schema",
+        )
 
     def __call__(
         self, role: ResearchRole, symbol: str, as_of: datetime,
@@ -64,9 +67,12 @@ class OpenAICouncilSynthesizer:
         from langchain_openai import ChatOpenAI
 
         self.model = model
-        self.client = ChatOpenAI(
-            api_key=api_key, model=model, temperature=0,
-        ).with_structured_output(CouncilSynthesis, method="json_schema")
+        options = {"api_key": api_key, "model": model}
+        if model.startswith("gpt-4"):
+            options["temperature"] = 0
+        self.client = ChatOpenAI(**options).with_structured_output(
+            CouncilSynthesis, method="json_schema",
+        )
 
     def __call__(self, symbol, as_of, reports, evidence) -> CouncilSynthesis:
         synthesis = self.client.invoke([

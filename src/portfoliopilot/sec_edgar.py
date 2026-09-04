@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time as timer
 from datetime import UTC, date, datetime, time
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -15,11 +16,14 @@ FACTS = (
 
 
 class SECEdgarCache:
-    def __init__(self, user_agent: str, directory: Path):
+    def __init__(self, user_agent: str, directory: Path, minimum_request_interval: float = .12):
         if "@" not in user_agent:
             raise ValueError("SEC_USER_AGENT must identify the application and contact email")
         self.user_agent = user_agent
         self.directory = directory
+        self._memory: dict[str, dict] = {}
+        self.minimum_request_interval = minimum_request_interval
+        self._last_request = 0.0
         directory.mkdir(parents=True, exist_ok=True)
 
     def ticker_map(self) -> dict[str, int]:
@@ -32,6 +36,16 @@ class SECEdgarCache:
             f"{symbol.upper()}-companyfacts.json",
             f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json",
         )
+
+    def submission_metadata(self, symbol: str, cik: int) -> dict:
+        return self._cached(
+            f"{symbol.upper()}-submissions.json",
+            f"https://data.sec.gov/submissions/CIK{cik:010d}.json",
+        )
+
+    def sector(self, symbol: str, cik: int) -> str:
+        sic = int(self.submission_metadata(symbol, cik).get("sic") or 0)
+        return sic_sector(sic)
 
     def evidence_on(
         self, symbol: str, cik: int, decision_on: date, retrieved_at: datetime,
@@ -66,11 +80,44 @@ class SECEdgarCache:
         )
 
     def _cached(self, name: str, url: str) -> dict:
+        if name in self._memory:
+            return self._memory[name]
         path = self.directory / name
         if path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
-        request = Request(url, headers={"User-Agent": self.user_agent, "Accept": "application/json"})
-        with urlopen(request, timeout=60) as response:
-            payload = json.loads(response.read())
-        path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        else:
+            remaining = self.minimum_request_interval - (timer.monotonic() - self._last_request)
+            if remaining > 0:
+                timer.sleep(remaining)
+            request = Request(
+                url, headers={"User-Agent": self.user_agent, "Accept": "application/json"},
+            )
+            with urlopen(request, timeout=60) as response:
+                payload = json.loads(response.read())
+            self._last_request = timer.monotonic()
+            path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        self._memory[name] = payload
         return payload
+
+
+def sic_sector(sic: int) -> str:
+    """Stable broad sector buckets derived from the SEC's SIC classification."""
+    if 100 <= sic < 1500:
+        return "Energy & Materials"
+    if 1500 <= sic < 1800:
+        return "Industrials"
+    if 2000 <= sic < 4000:
+        return "Manufacturing"
+    if 4000 <= sic < 5000:
+        return "Transport & Utilities"
+    if 5000 <= sic < 6000:
+        return "Consumer & Retail"
+    if 6000 <= sic < 6800:
+        return "Financials"
+    if 7370 <= sic < 7380:
+        return "Technology"
+    if 7000 <= sic < 7400 or 7800 <= sic < 8000:
+        return "Consumer Services"
+    if 8000 <= sic < 8100:
+        return "Health Care"
+    return "Other"

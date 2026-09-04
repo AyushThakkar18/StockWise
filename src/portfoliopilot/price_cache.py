@@ -52,6 +52,18 @@ class PriceCache:
                 candidates.append((cached_end - cached_start, candidate.name, candidate))
         return min(candidates)[2] if candidates else None
 
+    def write(
+        self, symbol: str, start: date, end: date, bars: tuple[DailyBar, ...],
+    ) -> Path:
+        if not bars:
+            raise ValueError(f"Cannot cache an empty price series for {symbol}")
+        path = self.directory / f"{symbol.upper()}-{start}-{end}.json"
+        path.write_text(
+            json.dumps([self._encode(bar) for bar in bars], separators=(",", ":")),
+            encoding="utf-8",
+        )
+        return path
+
     @staticmethod
     def _encode(bar: DailyBar) -> dict[str, object]:
         item = bar.model_dump()

@@ -36,6 +36,8 @@ class JobQueue:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(path)
         self.connection.row_factory = sqlite3.Row
+        self.connection.execute("PRAGMA journal_mode = WAL")
+        self.connection.execute("PRAGMA busy_timeout = 5000")
         self.clock = clock or (lambda: datetime.now(UTC))
         self.connection.executescript("""
             CREATE TABLE IF NOT EXISTS jobs (
@@ -194,4 +196,3 @@ def _job(row: sqlite3.Row) -> Job:
         lease_until=datetime.fromisoformat(row["lease_until"]) if row["lease_until"] else None,
         last_error=row["last_error"],
     )
-

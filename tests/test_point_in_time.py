@@ -43,7 +43,37 @@ def test_dynamic_membership_exits_removed_stock_at_next_rebalance() -> None:
     assert result.points[2].weights == {"B": Decimal(1)}
 
 
+def test_zero_share_future_listing_does_not_require_price_before_listing() -> None:
+    membership = MembershipHistory({date(2020, 1, 1): ("A",)}, "fixture")
+    future = bars("FUTURE", [100, 100])[1:]
+    result = PointInTimeBacktester(cost_bps=Decimal(0), rebalance_every=1).run(
+        {"A": bars("A", [100, 100, 100]), "FUTURE": future},
+        bars("SPY", [100, 100, 100]), membership, EqualWeight(),
+    )
+    assert result.points[1].weights == {"A": Decimal(1)}
+
+
 def test_council_gate_abstains_instead_of_inventing_approval() -> None:
     strategy = CouncilGatedStrategy(EqualWeight(), lambda symbol, _: symbol == "A", top_n=2)
     targets = strategy.targets({"A": bars("A", [100]), "B": bars("B", [100])}, date(2020, 1, 1))
     assert targets == {"A": Decimal(1)}
+
+
+def test_council_gate_caps_concentration_and_leaves_residual_cash() -> None:
+    strategy = CouncilGatedStrategy(
+        EqualWeight(), lambda symbol, _: symbol == "A", top_n=2,
+        maximum_position_weight=Decimal("0.10"),
+    )
+    targets = strategy.targets({"A": bars("A", [100]), "B": bars("B", [100])}, date(2020, 1, 1))
+    assert targets == {"A": Decimal("0.10")}
+
+
+def test_council_gate_can_preserve_base_weights() -> None:
+    strategy = CouncilGatedStrategy(
+        EqualWeight(), lambda symbol, _: symbol == "A", top_n=2,
+        preserve_base_weights=True,
+    )
+    targets = strategy.targets(
+        {"A": bars("A", [100]), "B": bars("B", [100])}, date(2020, 1, 1),
+    )
+    assert targets == {"A": Decimal("0.5")}

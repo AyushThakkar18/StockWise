@@ -29,6 +29,15 @@ class Settings:
     require_api_token: bool = False
     tiingo_api_key: str | None = None
     sec_user_agent: str | None = None
+    openai_research_model: str | None = None
+    openai_selection_model: str | None = None
+    openai_scoring_model: str | None = None
+    bynara_api_key: str | None = None
+    bynara_model: str = "qwen-3.8-max-free"
+    bynara_base_url: str = "https://router.bynara.id/v1"
+    alpaca_paper_key_id: str | None = None
+    alpaca_paper_secret_key: str | None = None
+    alpaca_paper_enabled: bool = False
 
     @classmethod
     def from_env(cls, env_file: Path = Path(".env")) -> Settings:
@@ -45,7 +54,29 @@ class Settings:
             in {"1", "true", "yes"},
             tiingo_api_key=os.getenv("TIINGO_API_KEY"),
             sec_user_agent=os.getenv("SEC_USER_AGENT"),
+            openai_research_model=os.getenv("OPENAI_RESEARCH_MODEL") or os.getenv(
+                "OPENAI_MODEL", "gpt-4o-mini",
+            ),
+            openai_selection_model=os.getenv("OPENAI_SELECTION_MODEL") or os.getenv(
+                "OPENAI_MODEL", "gpt-4o-mini",
+            ),
+            openai_scoring_model=os.getenv("OPENAI_SCORING_MODEL") or os.getenv(
+                "OPENAI_SELECTION_MODEL",
+            ) or os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            bynara_api_key=os.getenv("bynaraKey") or os.getenv("BYNARA_API_KEY"),
+            bynara_model=os.getenv("BYNARA_MODEL", "qwen-3.8-max-free"),
+            bynara_base_url=os.getenv("BYNARA_BASE_URL", "https://router.bynara.id/v1"),
+            alpaca_paper_key_id=os.getenv("ALPACA_PAPER_KEY_ID"),
+            alpaca_paper_secret_key=os.getenv("ALPACA_PAPER_SECRET_KEY"),
+            alpaca_paper_enabled=os.getenv("ALPACA_PAPER_ENABLED", "false").lower()
+            in {"1", "true", "yes"},
         )
+
+    def validate_alpaca_paper(self) -> None:
+        if not self.alpaca_paper_enabled:
+            raise ValueError("Alpaca paper execution is disabled")
+        if not self.alpaca_paper_key_id or not self.alpaca_paper_secret_key:
+            raise ValueError("ALPACA_PAPER_KEY_ID and ALPACA_PAPER_SECRET_KEY are required")
 
     def validate_worker(self) -> None:
         if not self.alpha_vantage_api_key:

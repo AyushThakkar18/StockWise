@@ -15,6 +15,8 @@ class EventStore:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(path)
         self.connection.row_factory = sqlite3.Row
+        self.connection.execute("PRAGMA journal_mode = WAL")
+        self.connection.execute("PRAGMA busy_timeout = 5000")
         self.connection.execute("""
             CREATE TABLE IF NOT EXISTS events (
                 sequence INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,4 +49,3 @@ class EventStore:
             parameters = (entity_id,)
         query += " ORDER BY sequence"
         return tuple(dict(row) for row in self.connection.execute(query, parameters))
-

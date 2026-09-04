@@ -66,3 +66,28 @@ class AfterCloseScheduler:
             "MARKET_SNAPSHOT", payload, maximum_attempts=4,
         )
 
+
+class MonthlyCouncilScheduler:
+    """Schedules only after the final closed session of a month; never backfills a decision."""
+
+    def __init__(self, queue: JobQueue, calendar: TradingCalendar):
+        self.queue, self.calendar = queue, calendar
+
+    def schedule_if_due(self, now: datetime, universe_id: str) -> int | None:
+        closed = self.calendar.latest_closed(now)
+        following = self.calendar.next_session(closed.session)
+        if following.session.month == closed.session.month:
+            return None
+        payload = {
+            "decision_at": closed.close_at.isoformat(),
+            "decision_session": closed.session.isoformat(),
+            "execution_at": following.open_at.isoformat(),
+            "execution_session": following.session.isoformat(),
+            "universe_id": universe_id,
+            "calendar_version": self.calendar.calendar_version,
+            "execution_mode": "SIMULATED_NEXT_OPEN",
+        }
+        return self.queue.enqueue(
+            f"live-council:{universe_id}:{closed.session.isoformat()}",
+            "LIVE_COUNCIL_DECISION", payload, maximum_attempts=4,
+        )

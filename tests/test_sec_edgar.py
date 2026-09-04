@@ -1,6 +1,6 @@
 from datetime import UTC, date, datetime
 
-from portfoliopilot.sec_edgar import SECEdgarCache
+from portfoliopilot.sec_edgar import SECEdgarCache, sic_sector
 
 
 def test_sec_evidence_never_uses_future_filing(tmp_path) -> None:
@@ -14,3 +14,9 @@ def test_sec_evidence_never_uses_future_filing(tmp_path) -> None:
     assert item is not None
     assert "Revenues=10" in item.claim
     assert "99" not in item.claim
+
+
+def test_sic_sector_mapping_is_deterministic() -> None:
+    assert sic_sector(7372) == "Technology"
+    assert sic_sector(6022) == "Financials"
+    assert sic_sector(2834) == "Manufacturing"

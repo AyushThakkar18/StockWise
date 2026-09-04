@@ -44,17 +44,18 @@ class OpenAIRanker:
     def __init__(
         self, api_key: str, model: str, cache_directory: Path,
         maximum_attempts: int = 5, initial_delay: float = 1.0,
+        request_timeout: float = 90.0,
     ):
         if not api_key:
             raise ValueError("OPENAI_API_KEY is required")
         from openai import OpenAI
 
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key=api_key, timeout=request_timeout, max_retries=0)
         self.model = model
         self.cache_directory = cache_directory
         self.maximum_attempts = maximum_attempts
         self.initial_delay = initial_delay
-        if maximum_attempts <= 0 or initial_delay < 0:
+        if maximum_attempts <= 0 or initial_delay < 0 or request_timeout <= 0:
             raise ValueError("invalid retry policy")
         cache_directory.mkdir(parents=True, exist_ok=True)
 

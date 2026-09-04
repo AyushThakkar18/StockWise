@@ -60,3 +60,14 @@ def test_window_uses_prior_bars_for_features_but_resets_capital() -> None:
     )
     assert result.points[0].equity == Decimal(100_000)
     assert result.points[1].weights == {"A": Decimal(1)}
+
+
+def test_yahoo_split_normalized_close_is_not_double_counted() -> None:
+    values = list(bars("A", [100, 100, 100]))
+    values[1] = values[1].model_copy(update={
+        "source": "Yahoo Finance via yfinance", "split_coefficient": Decimal(10),
+    })
+    result = MultiAssetBacktester(cost_bps=Decimal(0), rebalance_every=10).run(
+        {"A": tuple(values)}, bars("SPY", [100, 100, 100]), EqualWeight(),
+    )
+    assert result.points[-1].equity == Decimal(100_000)

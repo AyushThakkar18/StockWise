@@ -40,6 +40,11 @@ class DailyBar(FrozenModel):
         return self
 
 
+def effective_split_coefficient(bar: DailyBar) -> Decimal:
+    """Yahoo's historical OHLC is already split-normalized; do not adjust shares twice."""
+    return Decimal(1) if bar.source == "Yahoo Finance via yfinance" else bar.split_coefficient
+
+
 class AlphaVantageClient:
     endpoint = "https://www.alphavantage.co/query"
 

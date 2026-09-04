@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from typing import Protocol
 
 from .backtest import BacktestPoint, performance_metrics
-from .market_data import DailyBar
-from .multi_backtest import CrossSectionalStrategy, MultiAssetPoint, MultiAssetResult
+from .market_data import DailyBar, effective_split_coefficient
+from .multi_backtest import CrossSectionalStrategy, MultiAssetPoint, MultiAssetResult, Transaction
 from .universe import MembershipHistory
 
 
@@ -27,6 +27,12 @@ class CouncilGatedStrategy:
     gate: CouncilGate
     shortlist: int = 40
     top_n: int = 20
+    maximum_position_weight: Decimal = Decimal(1)
+    maximum_invested_weight: Decimal = Decimal(1)
+    preserve_base_weights: bool = False
+    target_history: dict[date, dict[str, Decimal]] = field(
+        default_factory=dict, compare=False, repr=False,
+    )
     name: str = "ai_ranker_plus_research_council"
 
     def targets(
@@ -45,9 +51,22 @@ class CouncilGatedStrategy:
             approved = [symbol for symbol in shortlisted if self.gate(symbol, decision_on)]
         selected = approved[: self.top_n]
         if not selected:
+            self.target_history[decision_on] = {}
             return {}
-        weight = Decimal(1) / Decimal(len(selected))
-        return {symbol: weight for symbol in selected}
+        if self.preserve_base_weights:
+            targets = {
+                symbol: min(candidates[symbol], self.maximum_position_weight)
+                for symbol in selected
+            }
+            self.target_history[decision_on] = targets
+            return targets
+        weight = min(
+            self.maximum_position_weight,
+            self.maximum_invested_weight / Decimal(len(selected)),
+        )
+        targets = {symbol: weight for symbol in selected}
+        self.target_history[decision_on] = targets
+        return targets
 
 
 @dataclass(frozen=True)
@@ -98,8 +117,12 @@ class PointInTimeBacktester:
     def run(
         self, universe: dict[str, tuple[DailyBar, ...]], benchmark: tuple[DailyBar, ...],
         membership: MembershipHistory, strategy: CrossSectionalStrategy,
+        evaluation_start: date | None = None,
     ) -> MultiAssetResult:
-        sessions = tuple(bar.session for bar in benchmark)
+        sessions = tuple(
+            bar.session for bar in benchmark
+            if evaluation_start is None or bar.session >= evaluation_start
+        )
         audit = audit_price_coverage(membership, sessions, universe)
         if not audit.approved:
             sample = ", ".join(f"{day}:{symbol}" for day, symbol in audit.missing_symbol_sessions[:3])
@@ -110,11 +133,15 @@ class PointInTimeBacktester:
         benchmark_index = {bar.session: bar for bar in benchmark}
         cash = self.starting_cash
         shares = {symbol: Decimal(0) for symbol in universe}
-        histories: dict[str, list[DailyBar]] = {symbol: [] for symbol in universe}
+        histories: dict[str, list[DailyBar]] = {
+            symbol: [bar for bar in bars if bar.session < sessions[0]]
+            for symbol, bars in universe.items()
+        }
         pending: dict[str, Decimal] | None = None
         benchmark_shares = self.starting_cash / benchmark[0].open
         benchmark_cash = Decimal(0)
         points: list[MultiAssetPoint] = []
+        transactions: list[Transaction] = []
         for index, session in enumerate(sessions):
             members = set(membership.members_on(session))
             if index:
@@ -123,10 +150,15 @@ class PointInTimeBacktester:
                     if quantity and bar is None:
                         raise ValueError(f"held security {symbol} has no exit price on {session}")
                     if bar is not None:
-                        shares[symbol] = quantity * bar.split_coefficient
-                        cash += shares[symbol] * bar.dividend
+                        shares[symbol] = quantity * effective_split_coefficient(bar)
+                        dividend = shares[symbol] * bar.dividend
+                        cash += dividend
+                        if dividend:
+                            transactions.append(Transaction(
+                                session, symbol, "DIVIDEND", shares[symbol], bar.dividend, dividend,
+                            ))
                 benchmark_bar = benchmark_index[session]
-                benchmark_shares *= benchmark_bar.split_coefficient
+                benchmark_shares *= effective_split_coefficient(benchmark_bar)
                 benchmark_cash += benchmark_shares * benchmark_bar.dividend
             opens = {
                 symbol: indexed[symbol][session].open for symbol in shares
@@ -134,7 +166,10 @@ class PointInTimeBacktester:
             }
             turnover = cost = Decimal(0)
             if pending is not None:
-                cash, shares, turnover, cost = self._rebalance(cash, shares, opens, pending)
+                cash, shares, turnover, cost, trades = self._rebalance(
+                    session, cash, shares, opens, pending,
+                )
+                transactions.extend(trades)
             closes = {
                 symbol: indexed[symbol][session].close for symbol, quantity in shares.items()
                 if quantity and session in indexed[symbol]
@@ -166,9 +201,9 @@ class PointInTimeBacktester:
         ))
         years = max((sessions[-1] - sessions[0]).days / 365.25, 1 / 252)
         metrics["annual_turnover"] = sum(float(point.turnover) for point in points) / years
-        return MultiAssetResult(strategy.name, tuple(points), metrics)
+        return MultiAssetResult(strategy.name, tuple(points), metrics, tuple(transactions))
 
-    def _rebalance(self, cash, shares, opens, targets):
+    def _rebalance(self, session, cash, shares, opens, targets):
         unknown = set(targets) - set(opens)
         if unknown:
             raise ValueError(f"targets lack execution prices: {sorted(unknown)}")
@@ -182,19 +217,30 @@ class PointInTimeBacktester:
             symbol: equity * targets.get(symbol, Decimal(0)) / opens[symbol]
             for symbol in opens
         }
-        deltas = {symbol: desired.get(symbol, Decimal(0)) - shares[symbol] for symbol in shares}
+        # The universe contains securities that list later in the experiment. They have a
+        # zero-share ledger entry but no opening price yet and must not enter trade arithmetic.
+        deltas = {symbol: desired[symbol] - shares[symbol] for symbol in opens}
         traded = sum((abs(delta) * opens[symbol] for symbol, delta in deltas.items()), Decimal(0))
         cost = traded * self.cost_bps / Decimal(10_000)
+        executed = {}
         for symbol, delta in deltas.items():
             if delta < 0:
                 cash -= delta * opens[symbol]
                 shares[symbol] += delta
+                executed[symbol] = delta
         cash -= cost
         buys = sum((delta * opens[symbol] for symbol, delta in deltas.items() if delta > 0), Decimal(0))
         scale = min(Decimal(1), max(Decimal(0), cash / buys)) if buys else Decimal(1)
         for symbol, delta in deltas.items():
             if delta > 0:
-                executed = delta * scale
-                cash -= executed * opens[symbol]
-                shares[symbol] += executed
-        return cash, shares, traded / equity if equity else Decimal(0), cost
+                filled = delta * scale
+                cash -= filled * opens[symbol]
+                shares[symbol] += filled
+                executed[symbol] = filled
+        actual = sum((abs(qty) * opens[symbol] for symbol, qty in executed.items()), Decimal(0))
+        transactions = tuple(Transaction(
+            session=session, symbol=symbol, kind="BUY" if quantity > 0 else "SELL",
+            quantity=abs(quantity), price=opens[symbol], cash_amount=abs(quantity) * opens[symbol],
+            cost=cost * abs(quantity) * opens[symbol] / actual if actual else Decimal(0),
+        ) for symbol, quantity in sorted(executed.items()) if quantity)
+        return cash, shares, traded / equity if equity else Decimal(0), cost, transactions

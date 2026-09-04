@@ -8,11 +8,15 @@ BPS = Decimal("10000")
 
 
 class PaperBroker:
-    def __init__(self, fee_per_order: Decimal = Decimal("0"), slippage_bps: Decimal = Decimal("2")):
-        if fee_per_order < 0 or slippage_bps < 0:
+    def __init__(
+        self, fee_per_order: Decimal = Decimal("0"), slippage_bps: Decimal = Decimal("2"),
+        commission_bps: Decimal = Decimal("0"),
+    ):
+        if fee_per_order < 0 or slippage_bps < 0 or commission_bps < 0:
             raise ValueError("cost assumptions cannot be negative")
         self.fee_per_order = fee_per_order
         self.slippage_bps = slippage_bps
+        self.commission_bps = commission_bps
 
     def execute(self, order: Order, quote: MarketQuote, ledger: PortfolioLedger) -> ExecutionResult:
         rejection = self._validate(order, quote)
@@ -28,10 +32,11 @@ class PaperBroker:
         price = quote.mid * (Decimal("1") + direction * (half_spread + slippage))
         spread_cost = quantity * quote.mid * half_spread
         slippage_cost = quantity * quote.mid * slippage
+        fee = self.fee_per_order + quantity * quote.mid * self.commission_bps / BPS
         fill = Fill(
             id=f"fill-{order.id}", order_id=order.id, symbol=order.symbol, side=order.side,
             quantity=quantity, price=price, spread_cost=spread_cost,
-            slippage_cost=slippage_cost, fee=self.fee_per_order,
+            slippage_cost=slippage_cost, fee=fee,
             executed_at=quote.observed_at.astimezone(timezone.utc),
         )
         try:
@@ -71,4 +76,3 @@ class PaperBroker:
         target_value = ((held.quantity if held else Decimal("0")) + fill.quantity) * quote.mid
         if equity_before and target_value / equity_before > order.max_position_weight:
             raise ValueError("maximum position weight exceeded")
-
