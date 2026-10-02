@@ -103,11 +103,13 @@ class LiveCouncilDecision(FrozenModel):
     model: str
     prompt_version: str
     maximum_selections: int = Field(ge=1, le=20)
+    minimum_selections: int = Field(default=0, ge=0, le=20)
     minimum_score: float = Field(ge=0, le=100)
     minimum_specialist_score: int = Field(default=55, ge=0, le=100)
     minimum_specialists: int = Field(default=3, ge=1, le=4)
     candidates: tuple[CandidateCouncilRecord, ...]
     selected_symbols: tuple[str, ...]
+    selection_basis: dict[str, str] = Field(default_factory=dict)
 
     def audit_payload(self) -> dict[str, object]:
         """Dashboard-ready structured data plus a report generated from that same record."""
@@ -128,12 +130,14 @@ class LiveCouncilDecision(FrozenModel):
         for rank, record in enumerate(self.candidates, 1):
             packet, synthesis = record.packet, record.synthesis
             status = "SELECTED" if packet.symbol in self.selected_symbols else "NOT SELECTED"
+            basis = self.selection_basis.get(packet.symbol)
             lines.extend([
                 f"## {rank}. {packet.symbol} — {packet.company_name}", "",
                 (
                     f"**{status} · score {record.adjusted_score:.2f}/100 · "
                     f"confidence {synthesis.confidence}/100**"
                 ), "", synthesis.thesis, "",
+                *([f"Selection basis: {basis}", ""] if basis else []),
                 "### Agent contributions", "",
             ])
             for item in record.contributions:
@@ -175,6 +179,7 @@ class LiveCouncil:
         model: str,
         prompt_version: str = "live-council-v3-quality-floor",
         maximum_selections: int = 20,
+        minimum_selections: int = 0,
         minimum_score: float = 70,
         minimum_specialist_score: int = 55,
         minimum_specialists: int = 3,
@@ -185,13 +190,16 @@ class LiveCouncil:
             raise ValueError("role weights must cover all specialist roles and sum to one")
         if not 1 <= maximum_selections <= 20:
             raise ValueError("maximum selections must be between one and twenty")
+        if not 0 <= minimum_selections <= maximum_selections:
+            raise ValueError("minimum selections must be between zero and the maximum")
         if workers < 1:
             raise ValueError("workers must be positive")
         if not 1 <= minimum_specialists <= 4:
             raise ValueError("minimum specialists must be between one and four")
         self.specialist, self.synthesizer = specialist, synthesizer
         self.model, self.prompt_version = model, prompt_version
-        self.maximum_selections, self.minimum_score = maximum_selections, minimum_score
+        self.maximum_selections, self.minimum_selections = maximum_selections, minimum_selections
+        self.minimum_score = minimum_score
         self.minimum_specialist_score = minimum_specialist_score
         self.minimum_specialists = minimum_specialists
         self.workers = workers
@@ -208,16 +216,35 @@ class LiveCouncil:
         with ThreadPoolExecutor(max_workers=min(self.workers, len(packets))) as pool:
             records = list(pool.map(self._evaluate, packets))
         records.sort(key=lambda item: (-item.adjusted_score, item.packet.kronos_rank, item.packet.symbol))
-        selected = tuple(
+        qualified = tuple(
             item.packet.symbol for item in records if item.eligible
         )[: self.maximum_selections]
+        selected = list(qualified)
+        selection_basis = {symbol: "PASSED_QUALITY_GATE" for symbol in selected}
+        if len(selected) < self.minimum_selections:
+            for item in records:
+                if item.packet.symbol in selected or self._has_hard_blocker(item):
+                    continue
+                selected.append(item.packet.symbol)
+                selection_basis[item.packet.symbol] = "MINIMUM_DIVERSIFICATION_TOP_UP"
+                if len(selected) == self.minimum_selections:
+                    break
         return LiveCouncilDecision(
             decision_id=decision_id, decision_at=decision_at, model=self.model,
             prompt_version=self.prompt_version, maximum_selections=self.maximum_selections,
+            minimum_selections=self.minimum_selections,
             minimum_score=self.minimum_score,
             minimum_specialist_score=self.minimum_specialist_score,
             minimum_specialists=self.minimum_specialists,
-            candidates=tuple(records), selected_symbols=selected,
+            candidates=tuple(records), selected_symbols=tuple(selected),
+            selection_basis=selection_basis,
+        )
+
+    @staticmethod
+    def _has_hard_blocker(record: CandidateCouncilRecord) -> bool:
+        return bool(
+            record.synthesis.hard_blockers
+            or any(item.hard_blockers for item in record.contributions)
         )
 
     def _evaluate(self, packet: LiveCandidatePacket) -> CandidateCouncilRecord:

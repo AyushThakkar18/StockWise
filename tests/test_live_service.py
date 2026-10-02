@@ -47,7 +47,8 @@ class Runner:
         decision = LiveCouncilDecision(
             decision_id=f"live-{decision_at.date()}", decision_at=decision_at,
             model="gpt-4o-mini", prompt_version="live-council-v1",
-            maximum_selections=20, minimum_score=55, candidates=(), selected_symbols=(),
+            maximum_selections=20, minimum_score=55, candidates=(),
+            selected_symbols=tuple(f"S{index}" for index in range(10)),
         )
         return decision, {}, (bar("SPY", decision_at.date()),)
 

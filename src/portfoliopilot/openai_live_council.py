@@ -84,7 +84,13 @@ class OpenAILiveCouncilAgents:
         result = self._cached_parse(key, instructions, payload, SpecialistContribution)
         allowed = {item.id for item in packet.evidence}
         unknown = tuple(item for item in result.evidence_ids if item not in allowed)
-        updates = {"role": role}
+        # Identity fields are routing metadata owned by the orchestrator, not model judgments.
+        # Normalize them before validation so a semantically valid response cannot poison its
+        # deterministic cache merely because the model reformatted a timestamp or company name.
+        updates = {
+            "candidate_id": packet.candidate_id, "symbol": packet.symbol,
+            "company_name": packet.company_name, "role": role, "as_of": packet.decision_at,
+        }
         if unknown:
             updates.update({
                 "evidence_ids": tuple(item for item in result.evidence_ids if item in allowed),
@@ -117,6 +123,10 @@ class OpenAILiveCouncilAgents:
         result = self._cached_parse(
             self._fingerprint("SYNTHESIS", payload), instructions, payload, CandidateSynthesis,
         )
+        result = result.model_copy(update={
+            "candidate_id": packet.candidate_id, "symbol": packet.symbol,
+            "company_name": packet.company_name, "as_of": packet.decision_at,
+        })
         allowed = {item.id for item in packet.evidence}
         unknown = tuple(item for item in result.evidence_ids if item not in allowed)
         if not unknown:

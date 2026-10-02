@@ -61,6 +61,14 @@ business/fundamentals, news/filings/catalysts, and risk/sentiment—followed by 
 agent. Ordinary code validates candidate identity and evidence citations, combines specialist
 scores, ranks the candidates, and enforces portfolio constraints.
 
+The live `v4` policy selects every candidate passing the 70-point quality gate, up to 20. If fewer
+than 10 qualify, it fills the remaining target slots from the highest-ranked candidates that have
+no hard safety blocker. If fewer than 10 safe candidates exist, the monthly decision still proceeds
+with the safe subset: every stock keeps its ten-slot weight and unused slots remain in cash. With
+10-20 selections, 99.8% of current portfolio equity is divided equally; 0.2% remains as an
+execution-cost reserve. There is no automatic SPY fallback. The dossier labels quality-gate
+selections separately from minimum-diversification top-ups.
+
 Each immutable decision dossier contains the evidence available at the decision time, every agent's
 score, confidence, supporting points, concerns, citations, synthesis discussion, deterministic
 ranking, selection outcome, and a human-readable Markdown report. The same structured dossier is
@@ -72,6 +80,9 @@ council dossier and target weights, then executes once against supplied next-ses
 with 2 bps of slippage, 5 bps of transaction costs, and a small execution-cost reserve. Orders,
 fills, cost basis, realized and unrealized P&L, positions, and portfolio snapshots are append-only.
 The optional Alpaca adapter remains disabled and cannot address Alpaca's live-trading domain.
+
+The published 2023-2025 and 2025 results above belong to the retained historical 5%-slot/SPY
+allocation experiment. They do not represent a backtest of the newer live `v4` allocation policy.
 
 ## Backtest protocol
 
@@ -197,7 +208,8 @@ process remains active to execute at the next open and continue normal monthly m
 
 The launcher prevents Windows sleep, starts the dashboard, and checks every 15 minutes. The service
 does nothing before the US close or when the current month already has a frozen decision. When a new
-month is due, it refreshes current S&P 500 histories, runs deterministic Top 100, Kronos Top 50, and
+month is due, it refreshes current S&P 500 histories, ranks up to 200 data-eligible stocks,
+passes the strongest 75 Kronos candidates to the council, and
 the five-agent council. It freezes the result and executes it once the next session's opening prices
 are available. Between rebalances it refreshes marks so the dashboard shows current simulated P&L.
 Logs are written to `private_data/live/`.
@@ -210,7 +222,7 @@ python -m portfoliopilot.live_service --once --device auto
 
 Before the close this reports `WAIT_FOR_AFTER_CLOSE` without invoking Kronos or the LLM. A monthly
 research cycle requires `OPENAI_API_KEY`, `SEC_USER_AGENT`, the Kronos checkout under
-`private_data/Kronos`, and network access to Yahoo Finance and SEC EDGAR. Fifty candidates receive
+`private_data/Kronos`, and network access to Yahoo Finance and SEC EDGAR. Seventy-five candidates receive
 four isolated specialist reviews and one synthesis review; four candidates are processed in
 parallel. Timestamped, ticker-bound Yahoo headlines provide broker-free news and sentiment evidence;
 future headlines are rejected. All completed responses and Kronos forecasts are restart-safe cached.

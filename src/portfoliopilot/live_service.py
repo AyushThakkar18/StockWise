@@ -25,7 +25,7 @@ from .universe import load_membership_history
 from .yahoo_download import download_batch, download_quotes
 
 EASTERN = ZoneInfo("America/New_York")
-LIVE_POLICY_VERSION = "live-council-v3-quality-floor-70"
+LIVE_POLICY_VERSION = "live-council-v4-top200-kronos75-no-spy-quality-floor-70"
 
 
 def kronos_signal(forecast, benchmark, rank: int, population: int) -> dict[str, object]:
@@ -124,11 +124,11 @@ class ProductionCouncilRunner:
         )
         ciks = sec.ticker_map()
         strategy = SimpleMomentumTrendGrowthStrategy(
-            benchmark, sec, ciks, top_n=100, buffer_rank=120,
+            benchmark, sec, ciks, top_n=200, buffer_rank=240,
             maximum_position_weight=Decimal(1), maximum_sector_weight=Decimal(1),
         )
-        candidates = tuple(strategy.targets(histories))[:100]
-        if len(candidates) != 100:
+        candidates = tuple(strategy.targets(histories))[:200]
+        if len(candidates) < 75:
             raise ValueError(f"deterministic screen produced only {len(candidates)} candidates")
         factors = {item["symbol"]: item for item in strategy.audits[decision_on]["ranked"]}
         benchmark_forecast = self.forecaster(benchmark)
@@ -137,18 +137,20 @@ class ProductionCouncilRunner:
             forecast = self.forecaster(histories[symbol])
             ranked.append((symbol, forecast_score(forecast, benchmark_forecast), forecast))
             if index % 10 == 0:
-                print(f"[{decision_on}] live Kronos {index}/100", flush=True)
+                print(f"[{decision_on}] live Kronos {index}/{len(candidates)}", flush=True)
         ranked.sort(key=lambda item: (-item[1], int(factors[item[0]]["rank"]), item[0]))
         packets = []
         rank_by_symbol = {symbol: index for index, (symbol, _, _) in enumerate(ranked, 1)}
         # An invalid forecast remains in the audit but cannot control council admission.
         reviewed, screening_method = select_reviewed_candidates(
-            candidates, ranked, benchmark_forecast,
+            candidates, ranked, benchmark_forecast, count=75,
         )
         for screen_rank, (symbol, relative_score, forecast) in enumerate(reviewed, 1):
             cik = ciks[symbol]
             metadata = sec.submission_metadata(symbol, cik)
-            retrieved = datetime.now(UTC)
+            # Bind evidence provenance to the immutable decision snapshot so retries generate the
+            # same packet fingerprints and can safely reuse completed structured responses.
+            retrieved = decision_at
             evidence = tuple(filter(None, (
                 sec.evidence_on(symbol, cik, decision_on, retrieved),
             ))) + self.news.collect(symbol, decision_at, retrieved)
@@ -168,7 +170,8 @@ class ProductionCouncilRunner:
             ))
         council = LiveCouncil(
             self.agents.specialist, self.agents.synthesize, model=ALLOWED_MODEL,
-            prompt_version=LIVE_POLICY_VERSION, maximum_selections=20, minimum_score=70,
+            prompt_version=LIVE_POLICY_VERSION, maximum_selections=20, minimum_selections=10,
+            minimum_score=70,
             minimum_specialist_score=55, minimum_specialists=3,
         )
         return council.decide(f"live-{decision_on.isoformat()}", packets), histories, benchmark
@@ -199,9 +202,24 @@ class LivePaperService:
         after_close = local.time() >= clock_time(16, 15)
         created = None
         if due_today and after_close:
-            decision, histories, benchmark = self.runner.run(current)
+            market_cutoff = datetime.combine(
+                local.date(), clock_time(16, 15), tzinfo=EASTERN,
+            ).astimezone(UTC)
+            # Resume an orphaned frozen session at its original timestamp. This can occur when
+            # persistence fails after the session event but before the decision row is committed.
+            _, coordinator = self.engine._recover()
+            expected_id = f"live-{local.date().isoformat()}"
+            recorded_ids = {
+                item["payload"].get("decision", {}).get("decision_id")
+                for item in decisions
+            }
+            orphan = coordinator.sessions.get(expected_id)
+            decision_at = (
+                orphan.decision_at if orphan and expected_id not in recorded_ids else market_cutoff
+            )
+            decision, histories, benchmark = self.runner.run(decision_at)
             marks = self._latest_marks(histories | {"SPY": benchmark})
-            execution_at = next_weekday_open(current.astimezone(EASTERN).date())
+            execution_at = next_weekday_open(decision_at.astimezone(EASTERN).date())
             self.engine.freeze(decision, execution_at, marks)
             created = decision.decision_id
         result = {
@@ -267,6 +285,26 @@ class LivePaperService:
         cutoff = datetime.combine(cutoff_day, clock_time(16, 15), tzinfo=EASTERN).astimezone(UTC)
         decision, _, _ = self.runner.run(cutoff)
         return decision.model_copy(update={"decision_id": f"shadow-{decision.decision_id}-v3"})
+
+    def reconstruct_liquidation_close(self, session: date) -> dict[str, object]:
+        """Append a disclosed historical-close liquidation for a missed paper rebalance."""
+        ledger, _ = self.engine._recover()
+        symbols = tuple(sorted(
+            symbol for symbol, position in ledger.positions.items() if position.quantity
+        ))
+        histories = self.runner.prices.histories(symbols, session)
+        bars = {
+            symbol: next((bar for bar in reversed(series) if bar.session == session), None)
+            for symbol, series in histories.items()
+        }
+        missing = sorted(symbol for symbol in symbols if not bars.get(symbol))
+        if missing:
+            raise ValueError(f"missing historical session data: {', '.join(missing)}")
+        closes = {symbol: bars[symbol].close for symbol in symbols}
+        session_close = datetime.combine(session, clock_time(16), tzinfo=EASTERN).astimezone(UTC)
+        return self.engine.reconstruct_liquidation_at_close(
+            f"missed-rebalance-liquidation-{session.isoformat()}", session_close, closes,
+        )
 
     def promote_shadow(self, path: Path, now: datetime | None = None) -> dict[str, object]:
         """Promote an audited shadow decision into a simulated replacement rebalance."""
@@ -411,6 +449,10 @@ def main() -> None:
         default=Path("private_data/results/live-shadow-latest-v2.json"),
     )
     parser.add_argument("--promote-shadow", type=Path)
+    parser.add_argument(
+        "--reconstruct-liquidation-close", type=date.fromisoformat,
+        help="append a disclosed liquidation using the historical close on YYYY-MM-DD",
+    )
     parser.add_argument("--interval", type=int, default=900, help="poll interval in seconds")
     parser.add_argument("--device", default="auto")
     mode = parser.add_mutually_exclusive_group()
@@ -438,6 +480,11 @@ def main() -> None:
         return
     if arguments.promote_shadow:
         print(json.dumps(service.promote_shadow(arguments.promote_shadow), indent=2), flush=True)
+        return
+    if arguments.reconstruct_liquidation_close:
+        print(json.dumps(service.reconstruct_liquidation_close(
+            arguments.reconstruct_liquidation_close,
+        ), indent=2), flush=True)
         return
     while True:
         try:

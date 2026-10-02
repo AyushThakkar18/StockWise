@@ -126,3 +126,42 @@ def test_quality_floor_requires_three_supporting_specialists() -> None:
     ).decide("decision-1", [packet()])
     assert not decision.selected_symbols
     assert "INSUFFICIENT_SPECIALIST_SUPPORT" in decision.candidates[0].rejection_reasons
+
+
+def test_minimum_portfolio_tops_up_by_rank_but_never_overrides_hard_blockers() -> None:
+    packets = [packet(f"S{index}", f"candidate-{index}") for index in range(12)]
+
+    def scored(role: LiveCouncilRole, item: LiveCandidatePacket) -> SpecialistContribution:
+        result = specialist(role, item)
+        index = int(item.symbol[1:])
+        blockers = ("TRADING_HALTED",) if index == 0 and role == LiveCouncilRole.RISK else ()
+        return result.model_copy(update={"score": 68 - index, "hard_blockers": blockers})
+
+    decision = LiveCouncil(
+        scored, synthesizer, model="gpt-4o-mini", minimum_score=70,
+        minimum_selections=10,
+    ).decide("decision-1", packets)
+
+    assert len(decision.selected_symbols) == 10
+    assert "S0" not in decision.selected_symbols
+    assert decision.selected_symbols == tuple(f"S{index}" for index in range(1, 11))
+    assert set(decision.selection_basis.values()) == {"MINIMUM_DIVERSIFICATION_TOP_UP"}
+    assert "Selection basis: MINIMUM_DIVERSIFICATION_TOP_UP" in decision.human_report()
+
+
+def test_minimum_portfolio_uses_every_safe_candidate_without_aborting() -> None:
+    packets = [packet(f"S{index}", f"candidate-{index}") for index in range(10)]
+
+    def blocked(role: LiveCouncilRole, item: LiveCandidatePacket) -> SpecialistContribution:
+        result = specialist(role, item)
+        if item.symbol == "S0" and role == LiveCouncilRole.RISK:
+            return result.model_copy(update={"hard_blockers": ("TRADING_HALTED",)})
+        return result
+
+    decision = LiveCouncil(
+        blocked, synthesizer, model="gpt-4o-mini", minimum_selections=10,
+    ).decide("decision-1", packets)
+
+    assert len(decision.selected_symbols) == 9
+    assert "S0" not in decision.selected_symbols
+    assert set(decision.selection_basis.values()) == {"MINIMUM_DIVERSIFICATION_TOP_UP"}
