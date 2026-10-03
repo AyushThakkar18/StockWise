@@ -227,9 +227,3 @@ four isolated specialist reviews and one synthesis review; four candidates are p
 parallel. Timestamped, ticker-bound Yahoo headlines provide broker-free news and sentiment evidence;
 future headlines are rejected. All completed responses and Kronos forecasts are restart-safe cached.
 
-## Resume-safe description
-
-- Built a restart-safe multi-agent equity research pipeline combining point-in-time factor
-  screening, Kronos forecasts, structured LLM reviews, and deterministic portfolio controls.
-- Developed a transaction-cost-aware 2025 backtest across point-in-time S&P 500 members; the
-  strategy returned 17.49% while preserving complete monthly decision and attribution audits.
