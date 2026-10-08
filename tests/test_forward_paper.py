@@ -40,6 +40,16 @@ def test_fewer_than_ten_safe_stocks_leave_unused_slots_in_cash() -> None:
     assert ForwardPaperEngine._targets(()) == {}
 
 
+def test_initial_cash_is_persisted_per_isolated_portfolio(tmp_path) -> None:
+    database = tmp_path / "comparison.db"
+    first = ForwardPaperEngine(database, initial_cash=Decimal("1027.24"))
+    resumed = ForwardPaperEngine(database)
+
+    assert first.initial_cash == Decimal("1027.24")
+    assert resumed.initial_cash == Decimal("1027.24")
+    assert resumed._recover()[0].cash == Decimal("1027.24")
+
+
 def test_historical_liquidation_is_append_only_disclosed_and_idempotent(tmp_path) -> None:
     decision_at = datetime(2026, 8, 27, 20, tzinfo=UTC)
     symbols = tuple(f"S{index}" for index in range(10))

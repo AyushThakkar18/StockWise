@@ -10,6 +10,7 @@ from portfoliopilot.live_council import (
     LiveCouncilRole,
     SpecialistContribution,
 )
+from portfoliopilot.portfolio_construction import CorrelationEstimate
 
 NOW = datetime(2026, 8, 28, 20, tzinfo=UTC)
 
@@ -71,7 +72,7 @@ def test_live_council_preserves_every_agent_contribution_and_ranks() -> None:
     assert "Market Technical — 80/100" in report
     assert "Agreement:" in report
     payload = decision.audit_payload()
-    assert payload["schema_version"] == "live-council-decision-v1"
+    assert payload["schema_version"] == "live-council-decision-v2"
     assert payload["decision"]["selected_symbols"] == ["AAPL"]
     assert payload["human_report_markdown"] == report
 
@@ -165,3 +166,35 @@ def test_minimum_portfolio_uses_every_safe_candidate_without_aborting() -> None:
     assert len(decision.selected_symbols) == 9
     assert "S0" not in decision.selected_symbols
     assert set(decision.selection_basis.values()) == {"MINIMUM_DIVERSIFICATION_TOP_UP"}
+
+
+def test_shrunk_correlation_only_reorders_candidates_inside_quality_tie_bucket() -> None:
+    packets = [packet(symbol, f"candidate-{symbol}") for symbol in ("A", "B", "C")]
+
+    def scored(role: LiveCouncilRole, item: LiveCandidatePacket) -> SpecialistContribution:
+        score = {"A": 80, "B": 79, "C": 79}[item.symbol]
+        return specialist(role, item).model_copy(update={"score": score, "confidence": 100})
+
+    def synthesized(
+        item: LiveCandidatePacket, contributions: tuple[SpecialistContribution, ...],
+    ) -> CandidateSynthesis:
+        score = {"A": 80, "B": 79, "C": 79}[item.symbol]
+        return synthesizer(item, contributions).model_copy(
+            update={"investment_score": score, "confidence": 100},
+        )
+
+    estimate = CorrelationEstimate(
+        {("A", "B"): .95, ("A", "C"): .10, ("B", "C"): .10}, 126,
+    )
+    decision = LiveCouncil(
+        scored, synthesized, model="gpt-4o-mini", minimum_score=55,
+        maximum_selections=2,
+    ).decide("decision-1", packets, estimate)
+
+    assert decision.selected_symbols == ("A", "C")
+    assert all(decision.candidates[index].eligible for index in range(3))
+    assert decision.portfolio_diagnostics["correlation_can_reject_candidate"] is False
+    assert decision.portfolio_diagnostics["method"] == (
+        "QUALITY_BUCKET_THEN_SHRUNK_CORRELATION"
+    )
+    assert decision.portfolio_diagnostics["candidate_metrics"]["B"]["quality_rank"] == 2

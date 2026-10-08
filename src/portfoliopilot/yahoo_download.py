@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import yfinance as yf
 
@@ -15,6 +16,8 @@ from .market_data import DailyBar
 from .point_in_time_download import required_symbols
 from .price_cache import PriceCache
 from .universe import load_membership_history
+
+EASTERN = ZoneInfo("America/New_York")
 
 
 def yahoo_symbol(symbol: str) -> str:
@@ -72,7 +75,7 @@ def download_batch(symbols: tuple[str, ...], start: date, end: date) -> dict[str
         bars = []
         for timestamp, row in rows.dropna(subset=["Open", "High", "Low", "Close"]).iterrows():
             session = timestamp.date()
-            session_close = datetime.combine(session, time(21), tzinfo=UTC)
+            session_close = _session_close(session)
             adjusted = row.get("Adj Close", row["Close"])
             opened, high, low, close = _ohlc(row)
             bars.append(DailyBar(
@@ -89,6 +92,10 @@ def download_batch(symbols: tuple[str, ...], start: date, end: date) -> dict[str
         if bars:
             output[symbol] = tuple(bars)
     return output
+
+
+def _session_close(session: date) -> datetime:
+    return datetime.combine(session, time(16), tzinfo=EASTERN).astimezone(UTC)
 
 
 def main() -> None:

@@ -1,5 +1,6 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -11,6 +12,7 @@ from portfoliopilot.live_service import (
     LivePaperService,
     add_calendar_month,
     kronos_signal,
+    next_market_open,
     next_weekday_open,
     select_reviewed_candidates,
 )
@@ -35,6 +37,19 @@ class Prices:
 
     def marks(self, symbols):
         return {symbol: Decimal("100") for symbol in symbols}
+
+
+def test_next_market_open_uses_same_weekday_before_open() -> None:
+    eastern = ZoneInfo("America/New_York")
+    before_open = datetime(2026, 10, 5, 2, 30, tzinfo=eastern)
+    after_close = datetime(2026, 10, 5, 17, tzinfo=eastern)
+
+    assert next_market_open(before_open).astimezone(eastern) == datetime(
+        2026, 10, 5, 9, 30, tzinfo=eastern,
+    )
+    assert next_market_open(after_close).astimezone(eastern) == datetime(
+        2026, 10, 6, 9, 30, tzinfo=eastern,
+    )
 
 
 class Runner:
@@ -106,7 +121,7 @@ def test_shadow_rerun_does_not_freeze_or_replace_decision(tmp_path) -> None:
     runner = Runner()
     service = LivePaperService(settings(tmp_path), runner)
     decision = service.shadow_from_latest_close(datetime(2026, 8, 28, 12, tzinfo=UTC))
-    assert decision.decision_id == "shadow-live-2026-08-27-v3"
+    assert decision.decision_id == "shadow-live-2026-08-27-v5"
     assert service.engine.paper.all_decision_payloads() == ()
 
 
@@ -136,4 +151,27 @@ def test_unreliable_benchmark_falls_back_to_deterministic_candidates() -> None:
     ranked = [("C", 3.0, object()), ("B", 2.0, object()), ("A", 1.0, object())]
     reviewed, method = select_reviewed_candidates(("A", "B", "C"), ranked, benchmark, 2)
     assert [item[0] for item in reviewed] == ["A", "B"]
-    assert method == "DETERMINISTIC_TOP_50_KRONOS_REJECTED"
+    assert method == "DETERMINISTIC_TOP_2_KRONOS_BENCHMARK_REJECTED"
+
+
+def test_unreliable_candidate_forecast_cannot_control_kronos_admission() -> None:
+    def forecast(median: float, dispersion: float = .04) -> KronosForecast:
+        return KronosForecast(
+            model="test", as_of=date(2026, 8, 27), horizon=21, paths=10,
+            median_return=median, mean_return=median, probability_positive=.6,
+            bear_return=median - .05, bull_return=median + .05,
+            predicted_volatility=.2, predicted_max_drawdown=-.1,
+            forecast_dispersion=dispersion,
+        )
+
+    benchmark = forecast(.01)
+    ranked = [
+        ("C", 3.0, forecast(.30)),
+        ("B", 2.0, forecast(.04)),
+        ("A", 1.0, forecast(.03)),
+    ]
+
+    reviewed, method = select_reviewed_candidates(("A", "B", "C"), ranked, benchmark, 2)
+
+    assert [item[0] for item in reviewed] == ["B", "A"]
+    assert method == "KRONOS_RELIABLE_CROSS_SECTIONAL_TOP_2"

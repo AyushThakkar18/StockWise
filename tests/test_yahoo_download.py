@@ -1,6 +1,7 @@
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from portfoliopilot.yahoo_download import _ohlc, download_quotes, yahoo_symbol
+from portfoliopilot.yahoo_download import _ohlc, _session_close, download_quotes, yahoo_symbol
 
 
 def test_yahoo_symbol_translates_class_shares() -> None:
@@ -24,3 +25,8 @@ def test_download_quotes_uses_last_price(monkeypatch) -> None:
 
     monkeypatch.setattr("portfoliopilot.yahoo_download.yf.Ticker", lambda symbol: Ticker())
     assert download_quotes(("DELL",), attempts=1) == {"DELL": Decimal("516.39")}
+
+
+def test_session_close_tracks_new_york_daylight_saving_time() -> None:
+    assert _session_close(date(2026, 7, 1)) == datetime(2026, 7, 1, 20, tzinfo=UTC)
+    assert _session_close(date(2026, 1, 2)) == datetime(2026, 1, 2, 21, tzinfo=UTC)

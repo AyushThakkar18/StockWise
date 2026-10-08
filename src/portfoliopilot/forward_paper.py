@@ -9,6 +9,7 @@ from .broker import PaperBroker
 from .contracts import MarketQuote
 from .ledger import PortfolioLedger
 from .live_council import LiveCouncilDecision
+from .live_policy import LIVE_POLICY_VERSION, LIVE_STRATEGY_NAME
 from .operations import orders_from_targets
 from .optimizer import AllocationResult
 from .paper_session import PaperSessionCoordinator
@@ -25,19 +26,36 @@ class ForwardPaperEngine:
     ) -> None:
         if initial_cash <= 0:
             raise ValueError("initial cash must be positive")
-        self.database, self.initial_cash = database, initial_cash
+        self.database = database
         self.paper, self.events = PaperTradingStore(database), EventStore(database)
+        configured = [
+            event for event in self.events.events("portfolio")
+            if event["event_type"] == "PAPER_PORTFOLIO_CONFIGURED"
+        ]
+        if configured:
+            import json
+            self.initial_cash = Decimal(json.loads(configured[0]["payload"])["initial_cash"])
+            if initial_cash != Decimal("1000") and initial_cash != self.initial_cash:
+                raise ValueError("initial cash does not match the existing paper portfolio")
+        else:
+            self.initial_cash = initial_cash
+            self.events.append(
+                "paper-portfolio-configured", "PAPER_PORTFOLIO_CONFIGURED", "portfolio",
+                {"initial_cash": str(initial_cash)},
+            )
         self.broker = PaperBroker(slippage_bps=slippage_bps, commission_bps=commission_bps)
         self.version = StrategyVersion(
-            "live-five-agent-v4-top200-kronos75-no-spy-quality-floor-70",
+            LIVE_STRATEGY_NAME,
             {"weighting": "equal_above_10_capped_below_10", "target_minimum_positions": 10,
              "maximum_positions": 20, "fallback": "cash",
              "deterministic_candidates": 200, "kronos_candidates": 75,
+             "portfolio_fit": "whole_point_ties_then_ledoit_wolf_correlation",
+             "momentum_diagnostics": "skip_month_return_path_and_regime_telemetry",
              "execution": "SIMULATED_NEXT_OPEN",
              "execution_cost_reserve": "0.002",
              "minimum_order_notional": "0.01",
              "slippage_bps": str(slippage_bps), "commission_bps": str(commission_bps)},
-            "live-council-v4-top200-kronos75-no-spy-quality-floor-70",
+            LIVE_POLICY_VERSION,
         )
         self.version_hash = self.paper.register_strategy(self.version)
 
@@ -92,14 +110,17 @@ class ForwardPaperEngine:
         ]
         if len(decisions) != 1:
             raise ValueError("frozen council decision is missing or ambiguous")
+        decision_version_hash = decisions[0]["version_hash"]
+        decision_policy = decisions[0]["payload"]["decision"].get(
+            "prompt_version", LIVE_POLICY_VERSION,
+        )
         raw_targets = decisions[0]["payload"]["target_weights"]
         allocation = AllocationResult(
             {symbol: float(value) for symbol, value in raw_targets.items()}, 0.0, {}, 0.0,
         )
         orders = orders_from_targets(
             decision_id, session.decision_at, execution_at, allocation, ledger, opening_prices,
-            Decimal(1),
-            "live-council-v4-top200-kronos75-no-spy-quality-floor-70",
+            Decimal(1), decision_policy,
             minimum_notional=Decimal("0.01"),
         )
         orders = tuple(sorted(orders, key=lambda order: (order.side.value == "BUY", order.symbol)))
@@ -117,7 +138,7 @@ class ForwardPaperEngine:
             ))
             results.append(result.model_dump(mode="json"))
         self.paper.record_snapshot(
-            self.version_hash, "live-five-agent", execution_at.date(),
+            decision_version_hash, "live-five-agent", execution_at.date(),
             ledger.equity(opening_prices), ledger.cash,
             {symbol: position.quantity for symbol, position in ledger.positions.items()
              if position.quantity},

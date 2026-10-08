@@ -20,6 +20,7 @@ from .forward_paper import ForwardPaperEngine
 from .jobs import JobQueue
 from .ledger import PortfolioLedger
 from .live_council import LiveCouncilDecision
+from .live_policy import V5_COMPARISON_DATABASE, V5_COMPARISON_INITIAL_CASH
 from .live_service import LivePaperService, YahooLivePrices
 from .market_data import DailyBar
 from .operations import orders_from_targets
@@ -150,8 +151,9 @@ def capabilities() -> dict[str, object]:
     }
 
 
-def _dashboard() -> PaperDashboard:
-    return PaperDashboard(PaperTradingStore(settings.database_path), EventStore(settings.database_path))
+def _dashboard(database=None) -> PaperDashboard:
+    path = database or settings.database_path
+    return PaperDashboard(PaperTradingStore(path), EventStore(path))
 
 
 @app.get("/dashboard/overview")
@@ -183,6 +185,35 @@ def dashboard_decisions() -> tuple[dict[str, object], ...]:
 @app.get("/dashboard/trades")
 def dashboard_trades() -> tuple[dict[str, object], ...]:
     return _dashboard().trades()
+
+
+@app.get("/dashboard/v5/overview")
+def dashboard_v5_overview() -> dict[str, object]:
+    return _dashboard(V5_COMPARISON_DATABASE).overview()
+
+
+@app.get("/dashboard/v5/decisions")
+def dashboard_v5_decisions() -> tuple[dict[str, object], ...]:
+    return _dashboard(V5_COMPARISON_DATABASE).decisions()
+
+
+@app.get("/dashboard/v5/trades")
+def dashboard_v5_trades() -> tuple[dict[str, object], ...]:
+    return _dashboard(V5_COMPARISON_DATABASE).trades()
+
+
+@app.post("/dashboard/v5/refresh-prices")
+def dashboard_v5_refresh_prices() -> dict[str, object]:
+    if not PRICE_REFRESH_LOCK.acquire(blocking=False):
+        return {"status": "REFRESH_IN_PROGRESS", "valuation_updated": False}
+    try:
+        result = LivePaperService(
+            settings, DashboardPriceRunner(), database=V5_COMPARISON_DATABASE,
+            initial_cash=Decimal(V5_COMPARISON_INITIAL_CASH),
+        ).price_cycle()
+        return {"status": "UPDATED" if result["valuation_updated"] else "NO_UPDATE", **result}
+    finally:
+        PRICE_REFRESH_LOCK.release()
 
 
 @app.get("/operations/status")

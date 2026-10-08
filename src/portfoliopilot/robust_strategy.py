@@ -44,6 +44,9 @@ class RobustMultifactorStrategy:
     target_volatility: float = .15
     minimum_dollar_volume: float = 5_000_000
     fundamental_universe_size: int = 150
+    preliminary_price_factors: tuple[str, ...] = tuple(
+        name for name in DEFAULT_WEIGHTS if name not in {"growth", "quality"}
+    )
     correlation_penalty: float = .08
     retention_bonus: float = 0.0
     weighting_method: str = "inverse_volatility"
@@ -60,7 +63,12 @@ class RobustMultifactorStrategy:
         raw = self._raw_features(history, market, decision_on)
         if not raw:
             return {}
-        price_names = tuple(name for name in DEFAULT_WEIGHTS if name not in {"growth", "quality"})
+        price_names = self.preliminary_price_factors
+        if not price_names or any(
+            name not in DEFAULT_WEIGHTS or name in {"growth", "quality"}
+            for name in price_names
+        ):
+            raise ValueError("preliminary price factors must be known non-empty factors")
         preliminary_percentiles = {
             factor: _percentile_ranks(raw, factor) for factor in price_names
         }
@@ -104,6 +112,9 @@ class RobustMultifactorStrategy:
                 "sector": raw[symbol]["sector"],
                 "fundamental_completeness": raw[symbol]["completeness"],
                 "volatility": raw[symbol]["volatility"],
+                "factor_percentiles": {
+                    factor: percentiles[factor][symbol] for factor in active_factors
+                },
                 **{factor: raw[symbol].get(factor) for factor in DEFAULT_WEIGHTS},
             } for symbol in audit_symbols],
         }

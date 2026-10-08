@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -9,6 +11,7 @@ from statistics import pstdev
 from pydantic import Field, model_validator
 
 from .contracts import Evidence, FrozenModel
+from .portfolio_construction import CorrelationEstimate, pairwise_summary
 
 
 class LiveCouncilRole(StrEnum):
@@ -110,11 +113,12 @@ class LiveCouncilDecision(FrozenModel):
     candidates: tuple[CandidateCouncilRecord, ...]
     selected_symbols: tuple[str, ...]
     selection_basis: dict[str, str] = Field(default_factory=dict)
+    portfolio_diagnostics: dict[str, object] = Field(default_factory=dict)
 
     def audit_payload(self) -> dict[str, object]:
         """Dashboard-ready structured data plus a report generated from that same record."""
         return {
-            "schema_version": "live-council-decision-v1",
+            "schema_version": "live-council-decision-v2",
             "decision": self.model_dump(mode="json"),
             "human_report_markdown": self.human_report(),
         }
@@ -127,6 +131,21 @@ class LiveCouncilDecision(FrozenModel):
                 f"{', '.join(self.selected_symbols) if self.selected_symbols else 'none'}"
             ), "",
         ]
+        if self.portfolio_diagnostics:
+            average = self.portfolio_diagnostics.get("average_pairwise_correlation")
+            maximum = self.portfolio_diagnostics.get("maximum_pairwise_correlation")
+            lines.extend([
+                "## Portfolio construction", "",
+                f"Method: {self.portfolio_diagnostics.get('method', 'QUALITY_RANK_ONLY')}", "",
+                (
+                    "Selected pairwise correlation: "
+                    f"average {_format_metric(average)}, maximum {_format_metric(maximum)}"
+                ), "",
+                (
+                    "Sector counts: "
+                    f"{self.portfolio_diagnostics.get('selected_sector_counts', {})}"
+                ), "",
+            ])
         for rank, record in enumerate(self.candidates, 1):
             packet, synthesis = record.packet, record.synthesis
             status = "SELECTED" if packet.symbol in self.selected_symbols else "NOT SELECTED"
@@ -205,7 +224,12 @@ class LiveCouncil:
         self.workers = workers
         self.role_weights = dict(role_weights)
 
-    def decide(self, decision_id: str, packets: Sequence[LiveCandidatePacket]) -> LiveCouncilDecision:
+    def decide(
+        self,
+        decision_id: str,
+        packets: Sequence[LiveCandidatePacket],
+        correlation_estimate: CorrelationEstimate | None = None,
+    ) -> LiveCouncilDecision:
         if not packets:
             raise ValueError("at least one candidate is required")
         if len({item.candidate_id for item in packets}) != len(packets):
@@ -216,19 +240,28 @@ class LiveCouncil:
         with ThreadPoolExecutor(max_workers=min(self.workers, len(packets))) as pool:
             records = list(pool.map(self._evaluate, packets))
         records.sort(key=lambda item: (-item.adjusted_score, item.packet.kronos_rank, item.packet.symbol))
-        qualified = tuple(
-            item.packet.symbol for item in records if item.eligible
-        )[: self.maximum_selections]
-        selected = list(qualified)
+        qualified_records = self._portfolio_order(
+            [item for item in records if item.eligible], correlation_estimate,
+        )
+        selected_records = qualified_records[: self.maximum_selections]
+        selected = [item.packet.symbol for item in selected_records]
         selection_basis = {symbol: "PASSED_QUALITY_GATE" for symbol in selected}
         if len(selected) < self.minimum_selections:
-            for item in records:
-                if item.packet.symbol in selected or self._has_hard_blocker(item):
-                    continue
+            safe_top_ups = [
+                item for item in records
+                if item.packet.symbol not in selected and not self._has_hard_blocker(item)
+            ]
+            for item in self._portfolio_order(
+                safe_top_ups, correlation_estimate, selected_records,
+            ):
                 selected.append(item.packet.symbol)
+                selected_records.append(item)
                 selection_basis[item.packet.symbol] = "MINIMUM_DIVERSIFICATION_TOP_UP"
                 if len(selected) == self.minimum_selections:
                     break
+        diagnostics = self._portfolio_diagnostics(
+            records, selected_records, correlation_estimate,
+        )
         return LiveCouncilDecision(
             decision_id=decision_id, decision_at=decision_at, model=self.model,
             prompt_version=self.prompt_version, maximum_selections=self.maximum_selections,
@@ -237,8 +270,97 @@ class LiveCouncil:
             minimum_specialist_score=self.minimum_specialist_score,
             minimum_specialists=self.minimum_specialists,
             candidates=tuple(records), selected_symbols=tuple(selected),
-            selection_basis=selection_basis,
+            selection_basis=selection_basis, portfolio_diagnostics=diagnostics,
         )
+
+    @staticmethod
+    def _portfolio_order(
+        records: Sequence[CandidateCouncilRecord],
+        estimate: CorrelationEstimate | None,
+        initial: Sequence[CandidateCouncilRecord] = (),
+    ) -> list[CandidateCouncilRecord]:
+        """Preserve quality buckets; use diversification only inside whole-point near-ties."""
+        if estimate is None:
+            return list(records)
+        buckets: dict[int, list[CandidateCouncilRecord]] = {}
+        for item in records:
+            bucket = math.floor(item.adjusted_score + .5)
+            buckets.setdefault(bucket, []).append(item)
+        chosen = list(initial)
+        output: list[CandidateCouncilRecord] = []
+        sector_counts = Counter(item.packet.sector or "Unknown" for item in chosen)
+        for bucket in sorted(buckets, reverse=True):
+            remaining = list(buckets[bucket])
+            while remaining:
+                def key(item: CandidateCouncilRecord) -> tuple[float, int, float, int, str]:
+                    correlations = [
+                        estimate.between(item.packet.symbol, held.packet.symbol)
+                        for held in chosen
+                    ]
+                    available = [value for value in correlations if value is not None]
+                    marginal = sum(available) / len(available) if available else 0.0
+                    sector = item.packet.sector or "Unknown"
+                    return (
+                        marginal, sector_counts[sector], -item.adjusted_score,
+                        item.packet.kronos_rank, item.packet.symbol,
+                    )
+
+                winner = min(remaining, key=key)
+                remaining.remove(winner)
+                output.append(winner)
+                chosen.append(winner)
+                sector_counts[winner.packet.sector or "Unknown"] += 1
+        return output
+
+    @staticmethod
+    def _portfolio_diagnostics(
+        records: Sequence[CandidateCouncilRecord],
+        selected_records: Sequence[CandidateCouncilRecord],
+        estimate: CorrelationEstimate | None,
+    ) -> dict[str, object]:
+        selected = tuple(item.packet.symbol for item in selected_records)
+        average, maximum = pairwise_summary(selected, estimate)
+        quality_ranks = {item.packet.symbol: index for index, item in enumerate(records, 1)}
+        portfolio_ranks = {
+            item.packet.symbol: index for index, item in enumerate(selected_records, 1)
+        }
+        sector_counts = Counter(item.packet.sector or "Unknown" for item in selected_records)
+        candidate_metrics = {}
+        for item in records:
+            peers = tuple(symbol for symbol in selected if symbol != item.packet.symbol)
+            values = [
+                estimate.between(item.packet.symbol, peer) for peer in peers
+            ] if estimate else []
+            present = [value for value in values if value is not None]
+            candidate_metrics[item.packet.symbol] = {
+                "quality_rank": quality_ranks[item.packet.symbol],
+                "portfolio_rank": portfolio_ranks.get(item.packet.symbol),
+                "rounded_quality_bucket": math.floor(item.adjusted_score + .5),
+                "selected": item.packet.symbol in portfolio_ranks,
+                "average_correlation_to_selected": (
+                    round(sum(present) / len(present), 6) if present else None
+                ),
+                "maximum_correlation_to_selected": (
+                    round(max(present), 6) if present else None
+                ),
+            }
+        quality_order = sorted(selected, key=quality_ranks.__getitem__)
+        return {
+            "method": (
+                "QUALITY_BUCKET_THEN_SHRUNK_CORRELATION"
+                if estimate else "QUALITY_RANK_ONLY_CORRELATION_UNAVAILABLE"
+            ),
+            "quality_score_controls_eligibility": True,
+            "correlation_can_reject_candidate": False,
+            "near_tie_definition": "same nearest-whole-point adjusted-score bucket",
+            "correlation_estimator": estimate.method if estimate else None,
+            "correlation_observations": estimate.observations if estimate else 0,
+            "average_pairwise_correlation": round(average, 6) if average is not None else None,
+            "maximum_pairwise_correlation": round(maximum, 6) if maximum is not None else None,
+            "selected_sector_counts": dict(sorted(sector_counts.items())),
+            "near_tie_reordered": list(selected) != quality_order,
+            "candidate_metrics": candidate_metrics,
+        }
 
     @staticmethod
     def _has_hard_blocker(record: CandidateCouncilRecord) -> bool:
@@ -300,3 +422,7 @@ class LiveCouncil:
             ),
             eligible=not reasons, rejection_reasons=reasons,
         )
+
+
+def _format_metric(value: object) -> str:
+    return "unavailable" if value is None else f"{float(value):.3f}"

@@ -69,6 +69,24 @@ def test_simple_strategy_has_only_four_pre_registered_signals() -> None:
     assert strategy.correlation_penalty == 0
 
 
+def test_simple_strategy_audit_exposes_exact_active_factor_percentiles() -> None:
+    symbols = tuple(f"S{i:02d}" for i in range(8))
+    history = {
+        symbol: bars(symbol, list(range(100 + index, 400 + index)))
+        for index, symbol in enumerate(symbols)
+    }
+    strategy = SimpleMomentumTrendGrowthStrategy(
+        bars("SPY", list(range(100, 400))), FakeSEC(),
+        {symbol: index for index, symbol in enumerate(symbols)}, top_n=5,
+        maximum_position_weight=Decimal(1), maximum_sector_weight=Decimal(1),
+    )
+
+    strategy.targets(history)
+    first = strategy.audits[max(strategy.audits)]["ranked"][0]
+
+    assert set(first["factor_percentiles"]) == set(SIMPLE_MTG_WEIGHTS)
+
+
 def test_score_weighting_favors_higher_composite_score() -> None:
     strategy = SimpleMomentumTrendGrowthStrategy(
         (), FakeSEC(), {}, weighting_method="score",

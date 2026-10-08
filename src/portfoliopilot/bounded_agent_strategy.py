@@ -33,22 +33,39 @@ def feature_packet(symbol: str, bars, benchmark, factor: dict[str, object]) -> d
     beta = _covariance(returns[-aligned:], market_returns[-aligned:]) / max(
         1e-12, _variance(market_returns[-aligned:]),
     )
+    return_12_to_1 = _return_between(bars, 252, 21)
+    formation_returns = _window_returns(bars, 252, 21)
+    information_discreteness = _information_discreteness(
+        return_12_to_1, formation_returns,
+    )
     return {
         "identity": "anonymous_candidate",
         "as_of": decision_on.isoformat(),
         "horizon_sessions": 21,
         "deterministic_rank": factor["rank"],
         "deterministic_score": factor["score"],
-        "factor_percentiles": {
+        "deterministic_factors": {
             name: factor.get(name) for name in (
-                "momentum", "relative_strength", "low_volatility", "growth", "quality",
+                "momentum_12_1", "momentum_6_1", "relative_strength", "trend",
+                "low_volatility", "downside_risk", "growth", "quality",
             )
         },
+        "factor_percentiles": factor.get("factor_percentiles", {}),
         "fundamental_completeness": factor.get("fundamental_completeness"),
         "sector": factor["sector"],
         "price_features": {
-            "return_21d": _return(bars, 21), "return_63d": _return(bars, 63),
+            "return_latest_21d": _return(bars, 21), "return_63d": _return(bars, 63),
             "return_126d": _return(bars, 126), "return_252d": _return(bars, 252),
+            "return_12_to_1_months": return_12_to_1,
+            "return_6_to_1_months": _return_between(bars, 126, 21),
+            "return_12_to_7_months": _return_between(bars, 252, 126),
+            "information_discreteness_12_to_1": information_discreteness,
+            "information_discreteness_percentile": None,
+            "return_path_label": "UNCLASSIFIED",
+            "positive_day_fraction_12_to_1": _positive_fraction(formation_returns),
+            "price_to_52_week_high": float(bars[-1].adjusted_close) / max(
+                float(item.adjusted_close) for item in bars[-252:]
+            ),
             "relative_return_21d": _return(bars, 21) - _return(market, 21),
             "relative_return_126d": _return(bars, 126) - _return(market, 126),
             "annualized_volatility_63d": _volatility(returns[-63:]),
@@ -61,11 +78,52 @@ def feature_packet(symbol: str, bars, benchmark, factor: dict[str, object]) -> d
         },
         "market_regime": {
             "spy_return_21d": _return(market, 21), "spy_return_200d": _return(market, 200),
+            "spy_return_504d": _optional_return(market, 504),
             "spy_above_200d_average": float(market[-1].adjusted_close) / _average_close(market[-200:]) - 1,
             "spy_volatility_63d": _volatility(market_returns[-63:]),
+            "spy_daily_variance_126d": _variance(market_returns[-126:]),
+            "use": "risk_telemetry_only; no automatic exposure or eligibility change",
         },
-        "instructions": "Assess only supplied, period-aligned deterministic measurements.",
+        "signal_provenance": {
+            "PRICE_MOMENTUM": [
+                "deterministic_factors.momentum_12_1",
+                "deterministic_factors.momentum_6_1",
+                "deterministic_factors.relative_strength",
+                "deterministic_factors.trend",
+                "price_features",
+            ],
+            "FUNDAMENTAL": [
+                "deterministic_factors.growth", "deterministic_factors.quality",
+            ],
+        },
+        "instructions": (
+            "Assess only supplied, period-aligned measurements. PRICE_MOMENTUM fields are "
+            "correlated views of one price history, not independent confirmations. Treat the "
+            "latest 21-day return, return-path metric, and 52-week-high proximity as context; "
+            "none is a standalone rejection rule."
+        ),
     }
+
+
+def classify_return_paths(
+    packets: dict[str, dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    """Label return paths by cross-sectional quintile without changing any score."""
+    ranked = sorted(
+        (
+            float(packet["price_features"]["information_discreteness_12_to_1"]),  # type: ignore[index]
+            symbol,
+        )
+        for symbol, packet in packets.items()
+    )
+    denominator = max(1, len(ranked) - 1)
+    for index, (_, symbol) in enumerate(ranked):
+        percentile = index / denominator
+        label = "CONTINUOUS" if percentile <= .20 else "DISCRETE" if percentile >= .80 else "MIXED"
+        price_features = packets[symbol]["price_features"]
+        price_features["information_discreteness_percentile"] = round(percentile, 6)  # type: ignore[index]
+        price_features["return_path_label"] = label  # type: ignore[index]
+    return packets
 
 
 @dataclass
@@ -173,6 +231,34 @@ class BoundedMultiAgentStrategy:
 
 def _return(bars, lookback: int) -> float:
     return float(bars[-1].adjusted_close / bars[-1 - lookback].adjusted_close - 1)
+
+
+def _optional_return(bars, lookback: int) -> float | None:
+    return _return(bars, lookback) if len(bars) > lookback else None
+
+
+def _return_between(bars, older: int, newer: int) -> float:
+    return float(bars[-1 - newer].adjusted_close / bars[-1 - older].adjusted_close - 1)
+
+
+def _window_returns(bars, older: int, newer: int) -> list[float]:
+    window = bars[-1 - older:-newer]
+    return [
+        float(window[index].adjusted_close / window[index - 1].adjusted_close - 1)
+        for index in range(1, len(window))
+    ]
+
+
+def _information_discreteness(formation_return: float, returns: list[float]) -> float:
+    if not returns or formation_return == 0:
+        return 0.0
+    negative = sum(value < 0 for value in returns) / len(returns)
+    positive = sum(value > 0 for value in returns) / len(returns)
+    return math.copysign(1.0, formation_return) * (negative - positive)
+
+
+def _positive_fraction(returns: list[float]) -> float:
+    return sum(value > 0 for value in returns) / len(returns) if returns else 0.0
 
 
 def _average_close(bars) -> float:

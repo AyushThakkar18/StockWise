@@ -9,7 +9,7 @@ from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .bounded_agent_strategy import feature_packet
+from .bounded_agent_strategy import classify_return_paths, feature_packet
 from .config import Settings
 from .contracts import Evidence
 from .forward_paper import ForwardPaperEngine
@@ -17,15 +17,16 @@ from .kronos_forecast import KronosForecaster
 from .kronos_only_backtest import forecast_score
 from .live_council import LiveCandidatePacket, LiveCouncil, LiveCouncilDecision
 from .live_evidence import YahooNewsEvidence
+from .live_policy import LIVE_POLICY_VERSION
 from .openai_bounded_agents import ALLOWED_MODEL
 from .openai_live_council import OpenAILiveCouncilAgents
+from .portfolio_construction import estimate_shrunk_correlations
 from .robust_strategy import SimpleMomentumTrendGrowthStrategy
 from .sec_edgar import SECEdgarCache
 from .universe import load_membership_history
 from .yahoo_download import download_batch, download_quotes
 
 EASTERN = ZoneInfo("America/New_York")
-LIVE_POLICY_VERSION = "live-council-v4-top200-kronos75-no-spy-quality-floor-70"
 
 
 def kronos_signal(forecast, benchmark, rank: int, population: int) -> dict[str, object]:
@@ -37,6 +38,8 @@ def kronos_signal(forecast, benchmark, rank: int, population: int) -> dict[str, 
         reasons.append("EXTREME_CANDIDATE_MEDIAN")
     if forecast.forecast_dispersion > .15:
         reasons.append("HIGH_FORECAST_DISPERSION")
+    if benchmark.forecast_dispersion > .15:
+        reasons.append("HIGH_BENCHMARK_FORECAST_DISPERSION")
     percentile = 1.0 if population == 1 else 1 - (rank - 1) / (population - 1)
     signal = {
         "status": "UNRELIABLE" if reasons else "RELIABLE",
@@ -53,15 +56,30 @@ def kronos_signal(forecast, benchmark, rank: int, population: int) -> dict[str, 
 
 def select_reviewed_candidates(
     candidates: tuple[str, ...], ranked: list[tuple[str, float, object]], benchmark_forecast,
-    count: int = 50,
+    count: int = 75,
 ) -> tuple[list[tuple[str, float, object]], str]:
-    if abs(benchmark_forecast.median_return) <= .08:
-        return ranked[:count], "KRONOS_CROSS_SECTIONAL_TOP_50"
     by_symbol = {item[0]: item for item in ranked}
-    return (
-        [by_symbol[symbol] for symbol in candidates[:count]],
-        "DETERMINISTIC_TOP_50_KRONOS_REJECTED",
+    if (
+        abs(benchmark_forecast.median_return) > .08
+        or benchmark_forecast.forecast_dispersion > .15
+    ):
+        return (
+            [by_symbol[symbol] for symbol in candidates[:count]],
+            f"DETERMINISTIC_TOP_{count}_KRONOS_BENCHMARK_REJECTED",
+        )
+    reliable = [
+        item for item in ranked
+        if abs(item[2].median_return) <= .15 and item[2].forecast_dispersion <= .15
+    ]
+    reviewed = reliable[:count]
+    if len(reviewed) == count:
+        return reviewed, f"KRONOS_RELIABLE_CROSS_SECTIONAL_TOP_{count}"
+    included = {item[0] for item in reviewed}
+    reviewed.extend(
+        by_symbol[symbol] for symbol in candidates
+        if symbol not in included
     )
+    return reviewed[:count], f"KRONOS_RELIABLE_PLUS_DETERMINISTIC_FILL_TOP_{count}"
 
 
 def next_weekday_open(day: date) -> datetime:
@@ -69,6 +87,16 @@ def next_weekday_open(day: date) -> datetime:
     while following.weekday() >= 5:
         following += timedelta(days=1)
     return datetime.combine(following, clock_time(9, 30), tzinfo=EASTERN).astimezone(UTC)
+
+
+def next_market_open(now: datetime) -> datetime:
+    """Return today's open before 09:30 ET, otherwise the next weekday open."""
+    local = now.astimezone(EASTERN)
+    if local.weekday() < 5 and local.time() < clock_time(9, 30):
+        return datetime.combine(
+            local.date(), clock_time(9, 30), tzinfo=EASTERN,
+        ).astimezone(UTC)
+    return next_weekday_open(local.date())
 
 
 def add_calendar_month(day: date) -> date:
@@ -82,7 +110,7 @@ class YahooLivePrices:
         for attempt in range(attempts):
             if not pending:
                 break
-            output.update(download_batch(pending, end - timedelta(days=550), end))
+            output.update(download_batch(pending, end - timedelta(days=800), end))
             pending = tuple(symbol for symbol in pending if symbol not in output)
             if pending and attempt + 1 < attempts:
                 time.sleep(2**attempt)
@@ -96,10 +124,12 @@ class ProductionCouncilRunner:
     def __init__(
         self, settings: Settings, *, device: str = "auto",
         membership_path: Path = Path("private_data/universe/sp500-components-updated.csv"),
+        use_kronos: bool = True,
     ) -> None:
         if not settings.openai_api_key or not settings.sec_user_agent:
             raise ValueError("OPENAI_API_KEY and SEC_USER_AGENT are required")
         self.settings, self.membership_path = settings, membership_path
+        self.use_kronos = use_kronos
         self.prices = YahooLivePrices()
         self.forecaster = KronosForecaster(
             Path("private_data/Kronos"), Path("private_data/kronos-live"),
@@ -108,6 +138,7 @@ class ProductionCouncilRunner:
         )
         self.agents = OpenAILiveCouncilAgents(
             settings.openai_api_key, Path("private_data/openai-live-council"), model=ALLOWED_MODEL,
+            prompt_version=LIVE_POLICY_VERSION,
         )
         self.news = YahooNewsEvidence()
 
@@ -116,6 +147,13 @@ class ProductionCouncilRunner:
         membership = load_membership_history(self.membership_path)
         members = membership.members_on(decision_on)
         histories = self.prices.histories(tuple(sorted(set(members) | {"SPY"})), decision_on)
+        histories = {
+            symbol: tuple(
+                bar for bar in bars if bar.available_to_strategy_at <= decision_at
+            )
+            for symbol, bars in histories.items()
+        }
+        histories = {symbol: bars for symbol, bars in histories.items() if bars}
         benchmark = histories.pop("SPY", None)
         if benchmark is None or len(histories) < 100:
             raise ValueError("insufficient current Yahoo coverage for live screening")
@@ -125,26 +163,38 @@ class ProductionCouncilRunner:
         ciks = sec.ticker_map()
         strategy = SimpleMomentumTrendGrowthStrategy(
             benchmark, sec, ciks, top_n=200, buffer_rank=240,
+            fundamental_universe_size=240,
+            preliminary_price_factors=("momentum_12_1", "momentum_6_1", "trend"),
             maximum_position_weight=Decimal(1), maximum_sector_weight=Decimal(1),
         )
         candidates = tuple(strategy.targets(histories))[:200]
         if len(candidates) < 75:
             raise ValueError(f"deterministic screen produced only {len(candidates)} candidates")
         factors = {item["symbol"]: item for item in strategy.audits[decision_on]["ranked"]}
-        benchmark_forecast = self.forecaster(benchmark)
+        benchmark_forecast = self.forecaster(benchmark) if self.use_kronos else None
         ranked = []
-        for index, symbol in enumerate(candidates, 1):
-            forecast = self.forecaster(histories[symbol])
-            ranked.append((symbol, forecast_score(forecast, benchmark_forecast), forecast))
-            if index % 10 == 0:
-                print(f"[{decision_on}] live Kronos {index}/{len(candidates)}", flush=True)
-        ranked.sort(key=lambda item: (-item[1], int(factors[item[0]]["rank"]), item[0]))
+        if self.use_kronos:
+            for index, symbol in enumerate(candidates, 1):
+                forecast = self.forecaster(histories[symbol])
+                ranked.append((symbol, forecast_score(forecast, benchmark_forecast), forecast))
+                if index % 10 == 0:
+                    print(f"[{decision_on}] live Kronos {index}/{len(candidates)}", flush=True)
+            ranked.sort(key=lambda item: (-item[1], int(factors[item[0]]["rank"]), item[0]))
         packets = []
         rank_by_symbol = {symbol: index for index, (symbol, _, _) in enumerate(ranked, 1)}
         # An invalid forecast remains in the audit but cannot control council admission.
-        reviewed, screening_method = select_reviewed_candidates(
-            candidates, ranked, benchmark_forecast, count=75,
-        )
+        if self.use_kronos:
+            reviewed, screening_method = select_reviewed_candidates(
+                candidates, ranked, benchmark_forecast, count=75,
+            )
+        else:
+            reviewed = [(symbol, 0.0, None) for symbol in candidates[:75]]
+            screening_method = "DETERMINISTIC_TOP_75_KRONOS_RUNTIME_UNAVAILABLE"
+        quantitative_by_symbol = {
+            symbol: feature_packet(symbol, histories[symbol], benchmark, factors[symbol])
+            for symbol, _, _ in reviewed
+        }
+        classify_return_paths(quantitative_by_symbol)
         for screen_rank, (symbol, relative_score, forecast) in enumerate(reviewed, 1):
             cik = ciks[symbol]
             metadata = sec.submission_metadata(symbol, cik)
@@ -154,10 +204,16 @@ class ProductionCouncilRunner:
             evidence = tuple(filter(None, (
                 sec.evidence_on(symbol, cik, decision_on, retrieved),
             ))) + self.news.collect(symbol, decision_at, retrieved)
-            quantitative = feature_packet(symbol, histories[symbol], benchmark, factors[symbol])
+            quantitative = quantitative_by_symbol[symbol]
             quantitative.update({
-                "kronos_signal": kronos_signal(
-                    forecast, benchmark_forecast, rank_by_symbol[symbol], len(ranked),
+                "kronos_signal": (
+                    kronos_signal(
+                        forecast, benchmark_forecast, rank_by_symbol[symbol], len(ranked),
+                    ) if forecast is not None else {
+                        "status": "UNAVAILABLE", "reliability_reasons": ["RUNTIME_DEVICE_LOST"],
+                        "cross_sectional_percentile": None, "relative_to_benchmark": None,
+                        "horizon_sessions": 21,
+                    }
                 ),
                 "candidate_screening_method": screening_method,
             })
@@ -174,16 +230,21 @@ class ProductionCouncilRunner:
             minimum_score=70,
             minimum_specialist_score=55, minimum_specialists=3,
         )
-        return council.decide(f"live-{decision_on.isoformat()}", packets), histories, benchmark
+        correlation_estimate = estimate_shrunk_correlations(
+            histories, tuple(packet.symbol for packet in packets), sessions=126,
+        )
+        return council.decide(
+            f"live-{decision_on.isoformat()}", packets, correlation_estimate,
+        ), histories, benchmark
 
 
 class LivePaperService:
     def __init__(
         self, settings: Settings, runner: ProductionCouncilRunner,
-        database: Path | None = None,
+        database: Path | None = None, initial_cash: Decimal = Decimal("1000"),
     ) -> None:
         self.settings, self.runner = settings, runner
-        self.engine = ForwardPaperEngine(database or settings.database_path)
+        self.engine = ForwardPaperEngine(database or settings.database_path, initial_cash=initial_cash)
 
     def cycle(
         self, now: datetime | None = None, *, update_prices: bool = True,
@@ -275,6 +336,51 @@ class LivePaperService:
         )
         return result
 
+    def initialize_at_current_mark(self, now: datetime | None = None) -> dict[str, object]:
+        """Start an isolated comparison portfolio at current quotes, never backdated prices."""
+        current = (now or datetime.now(UTC)).astimezone(UTC)
+        if self.engine.paper.all_decision_payloads():
+            raise ValueError("the comparison portfolio has already been initialized")
+        local = current.astimezone(EASTERN)
+        cutoff_day = local.date() if local.time() >= clock_time(16, 15) else local.date() - timedelta(1)
+        while cutoff_day.weekday() >= 5:
+            cutoff_day -= timedelta(1)
+        cutoff = datetime.combine(cutoff_day, clock_time(16, 15), tzinfo=EASTERN).astimezone(UTC)
+        decision, _, _ = self.runner.run(cutoff)
+        execution_now = datetime.now(UTC)
+        execution_local = execution_now.astimezone(EASTERN)
+        marks = self.runner.prices.marks(decision.selected_symbols)
+        missing = sorted(set(decision.selected_symbols) - set(marks))
+        if missing:
+            raise ValueError(f"missing current quotes: {', '.join(missing)}")
+        market_open = (
+            execution_local.weekday() < 5
+            and clock_time(9, 30) <= execution_local.time() < clock_time(16)
+        )
+        execution_at = (
+            execution_now if market_open else next_market_open(execution_now)
+        )
+        self.engine.freeze(decision, execution_at, {})
+        results = (
+            self.engine.execute_next_open(decision.decision_id, execution_at, marks)
+            if market_open else ()
+        )
+        disclosure = {
+            "decision_id": decision.decision_id, "decision_cutoff": cutoff.isoformat(),
+            "execution_at": execution_at.isoformat(),
+            "pricing_basis": "Yahoo Finance current quote" if market_open else "next market open",
+            "execution_mode": (
+                "SIMULATED_CURRENT_MARK_COMPARISON_START" if market_open
+                else "WAIT_FOR_SIMULATED_NEXT_OPEN"
+            ),
+            "orders": len(results), "selected_symbols": decision.selected_symbols,
+        }
+        self.engine.events.append(
+            f"comparison-start:{decision.decision_id}", "COMPARISON_PORTFOLIO_STARTED",
+            decision.decision_id, disclosure,
+        )
+        return disclosure
+
     def shadow_from_latest_close(self, now: datetime | None = None) -> LiveCouncilDecision:
         """Research the latest completed close without freezing or executing a portfolio."""
         current = (now or datetime.now(UTC)).astimezone(UTC)
@@ -284,7 +390,7 @@ class LivePaperService:
             cutoff_day -= timedelta(1)
         cutoff = datetime.combine(cutoff_day, clock_time(16, 15), tzinfo=EASTERN).astimezone(UTC)
         decision, _, _ = self.runner.run(cutoff)
-        return decision.model_copy(update={"decision_id": f"shadow-{decision.decision_id}-v3"})
+        return decision.model_copy(update={"decision_id": f"shadow-{decision.decision_id}-v5"})
 
     def reconstruct_liquidation_close(self, session: date) -> dict[str, object]:
         """Append a disclosed historical-close liquidation for a missed paper rebalance."""
@@ -441,12 +547,18 @@ def main() -> None:
         help="create the first monthly decision from the latest completed US session",
     )
     parser.add_argument(
+        "--initialize-current-mark", action="store_true",
+        help="research the latest close and start a comparison portfolio at current quotes",
+    )
+    parser.add_argument("--database", type=Path)
+    parser.add_argument("--initial-cash", type=Decimal, default=Decimal("1000"))
+    parser.add_argument(
         "--shadow-latest-close", action="store_true",
         help="rerun latest-close research without changing the frozen paper portfolio",
     )
     parser.add_argument(
         "--shadow-output", type=Path,
-        default=Path("private_data/results/live-shadow-latest-v2.json"),
+        default=Path("private_data/results/live-shadow-latest-v5.json"),
     )
     parser.add_argument("--promote-shadow", type=Path)
     parser.add_argument(
@@ -455,6 +567,10 @@ def main() -> None:
     )
     parser.add_argument("--interval", type=int, default=900, help="poll interval in seconds")
     parser.add_argument("--device", default="auto")
+    parser.add_argument(
+        "--skip-kronos", action="store_true",
+        help="use the audited deterministic Top 75 when Kronos runtime is unavailable",
+    )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--prices-only", action="store_true")
     mode.add_argument("--research-only", action="store_true")
@@ -462,7 +578,15 @@ def main() -> None:
     if arguments.interval < 60:
         parser.error("interval must be at least 60 seconds")
     settings = Settings.from_env()
-    service = LivePaperService(settings, ProductionCouncilRunner(settings, device=arguments.device))
+    service = LivePaperService(
+        settings, ProductionCouncilRunner(
+            settings, device=arguments.device, use_kronos=not arguments.skip_kronos,
+        ),
+        database=arguments.database, initial_cash=arguments.initial_cash,
+    )
+    if arguments.initialize_current_mark:
+        print(json.dumps(service.initialize_at_current_mark(), indent=2), flush=True)
+        return
     if arguments.initialize_from_latest_close:
         print(json.dumps(service.initialize_from_latest_close(), indent=2), flush=True)
         return

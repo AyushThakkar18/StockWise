@@ -12,8 +12,11 @@ def test_dashboard_page_exposes_portfolio_decisions_and_trades() -> None:
     assert "Execution history" in response.text
     assert "Council ranking" in response.text
     assert "Evidence and source links" in response.text
-    assert "/dashboard/overview" in response.text
-    assert "/dashboard/refresh-prices" in response.text
+    assert "`${root}/${u}`" in response.text
+    assert "`${root}/refresh-prices`" in response.text
+    assert "Current portfolio (v4)" in response.text
+    assert "Research upgrade (v5)" in response.text
+    assert "/v5" in response.text
 
 
 def test_dashboard_price_refresh_endpoint(monkeypatch) -> None:

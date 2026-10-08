@@ -17,11 +17,14 @@ ROLE_INSTRUCTIONS = {
     LiveCouncilRole.MARKET: (
         "Evaluate price trend, momentum, liquidity, volatility, sector-relative strength, market "
         "regime, and the calibrated Kronos cross-sectional signal. Treat Kronos as a ranking "
-        "feature, not a literal return forecast. If its status is UNRELIABLE, give it zero weight."
+        "feature, not a literal return forecast. If its status is UNRELIABLE, give it zero weight. "
+        "All PRICE_MOMENTUM measurements derive from the same history: treat them as one evidence "
+        "family, not several independent bullish votes. A large latest-month return, proximity to "
+        "a 52-week high, or distance above a moving average is context, never a standalone blocker."
     ),
     LiveCouncilRole.BUSINESS: (
-        "Evaluate growth, profitability, cash flow, balance-sheet strength, valuation, and the "
-        "quality and durability of the business."
+        "Evaluate only the supplied growth, profitability, balance-sheet, and SEC filing facts. "
+        "Do not estimate valuation, cash flow, or business facts that are absent from the packet."
     ),
     LiveCouncilRole.CATALYST: (
         "Evaluate timestamped news, SEC filings, earnings, guidance, corporate events, and likely "
@@ -31,7 +34,7 @@ ROLE_INSTRUCTIONS = {
         "Evaluate downside scenarios, sentiment and attention changes, conflicting evidence, "
         "event risk, realized volatility, drawdown, liquidity risk, and portfolio or sector "
         "concentration concerns. Do not infer a Kronos forecast; it is intentionally isolated "
-        "to the market specialist."
+        "to the market specialist. Treat regime fields as risk telemetry, not an automatic veto."
     ),
 }
 
@@ -118,7 +121,8 @@ class OpenAILiveCouncilAgents:
             "select the portfolio, set weights, or place trades. Cite only evidence IDs present in "
             "the candidate packet. Do not introduce new factual claims. Preserve hard blockers only "
             "when they meet the specialist prompt's objective blocker definition. Repeat the "
-            "candidate identity and timestamp exactly."
+            "candidate identity and timestamp exactly. Correlated price arguments repeated by "
+            "several specialists are one evidence family, not independent confirmation."
         )
         result = self._cached_parse(
             self._fingerprint("SYNTHESIS", payload), instructions, payload, CandidateSynthesis,
@@ -143,11 +147,54 @@ class OpenAILiveCouncilAgents:
     ) -> dict[str, object]:
         payload = packet.model_dump(mode="json")
         features = dict(payload["quantitative_features"])
-        kronos_keys = tuple(key for key in features if key.lower().startswith("kronos"))
-        if role != LiveCouncilRole.MARKET:
-            for key in kronos_keys:
-                features.pop(key, None)
-        payload["quantitative_features"] = features
+        factors = dict(features.get("deterministic_factors") or {})
+        percentiles = dict(features.get("factor_percentiles") or {})
+        common = {
+            key: features[key] for key in ("as_of", "horizon_sessions", "instructions")
+            if key in features
+        }
+        if role == LiveCouncilRole.MARKET:
+            view = common | {
+                key: features[key] for key in (
+                    "deterministic_rank", "deterministic_score", "price_features",
+                    "market_regime", "kronos_signal", "candidate_screening_method",
+                    "signal_provenance",
+                ) if key in features
+            }
+            view["price_factors"] = {
+                key: value for key, value in factors.items()
+                if key not in {"growth", "quality"}
+            }
+            view["price_factor_percentiles"] = {
+                key: value for key, value in percentiles.items()
+                if key not in {"growth", "quality"}
+            }
+        elif role == LiveCouncilRole.BUSINESS:
+            view = common | {
+                "fundamental_factors": {
+                    key: factors.get(key) for key in ("growth", "quality")
+                },
+                "fundamental_factor_percentiles": {
+                    key: percentiles.get(key) for key in ("growth", "quality")
+                },
+                "fundamental_completeness": features.get("fundamental_completeness"),
+            }
+        elif role == LiveCouncilRole.CATALYST:
+            view = common
+        elif role == LiveCouncilRole.RISK:
+            view = common | {
+                key: features[key] for key in (
+                    "price_features", "market_regime", "fundamental_completeness",
+                    "signal_provenance",
+                ) if key in features
+            }
+        else:
+            # The synthesis agent receives the specialist conclusions and guardrails, not the raw
+            # quantitative features a second time.
+            view = common | {
+                "signal_provenance": features.get("signal_provenance", {}),
+            }
+        payload["quantitative_features"] = view
         return payload
 
     def _fingerprint(self, role: str, payload: object) -> str:

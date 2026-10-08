@@ -21,16 +21,28 @@ def test_kronos_signal_is_visible_only_to_market_agent() -> None:
         candidate_id="c1", symbol="AAPL", company_name="Apple Inc.", decision_at=now,
         deterministic_rank=1, kronos_rank=1, evidence=(evidence,),
         quantitative_features={
-            "momentum_21d": .08,
+            "deterministic_factors": {"momentum_12_1": .08, "growth": .12},
+            "factor_percentiles": {"momentum_12_1": .7, "growth": .6},
+            "price_features": {"return_latest_21d": .08},
+            "market_regime": {"spy_return_21d": .02},
+            "fundamental_completeness": 1.0,
+            "signal_provenance": {"PRICE_MOMENTUM": ["price_features"]},
             "kronos_signal": {"status": "UNRELIABLE", "cross_sectional_percentile": .9},
         },
     )
     market = OpenAILiveCouncilAgents._packet_payload(item, LiveCouncilRole.MARKET)
     risk = OpenAILiveCouncilAgents._packet_payload(item, LiveCouncilRole.RISK)
+    business = OpenAILiveCouncilAgents._packet_payload(item, LiveCouncilRole.BUSINESS)
+    catalyst = OpenAILiveCouncilAgents._packet_payload(item, LiveCouncilRole.CATALYST)
     synthesis = OpenAILiveCouncilAgents._packet_payload(item, None)
     assert "kronos_signal" in market["quantitative_features"]
     assert "kronos_signal" not in risk["quantitative_features"]
     assert "kronos_signal" not in synthesis["quantitative_features"]
+    assert "growth" not in market["quantitative_features"]["price_factors"]
+    assert "price_features" not in business["quantitative_features"]
+    assert business["quantitative_features"]["fundamental_factors"]["growth"] == .12
+    assert "price_features" not in catalyst["quantitative_features"]
+    assert "price_features" not in synthesis["quantitative_features"]
 
 
 def test_orchestrator_normalizes_model_identity_fields() -> None:

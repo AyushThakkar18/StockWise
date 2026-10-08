@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from typing import Any
 
 from .paper_store import PaperTradingStore
@@ -22,7 +23,12 @@ class PaperDashboard:
             {**json.loads(event["payload"]), "occurred_at": event["occurred_at"]}
             for event in self.events.events() if event["event_type"] == "PORTFOLIO_VALUATION"
         ]
+        configured = [
+            json.loads(event["payload"]) for event in self.events.events("portfolio")
+            if event["event_type"] == "PAPER_PORTFOLIO_CONFIGURED"
+        ]
         return {
+            "initial_cash": configured[0]["initial_cash"] if configured else str(Decimal("1000")),
             "latest_snapshot": latest,
             "portfolio": valuations[-1] if valuations else None,
             "decision_count": len(decisions),

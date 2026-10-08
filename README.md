@@ -58,16 +58,30 @@ hash-cached so interrupted runs resume without repeating completed API calls.
 The prospective live path uses named stocks because it does not make historical decisions. Every
 candidate is isolated in its own request and reviewed by four specialists—market/technical,
 business/fundamentals, news/filings/catalysts, and risk/sentiment—followed by a fifth synthesis
-agent. Ordinary code validates candidate identity and evidence citations, combines specialist
-scores, ranks the candidates, and enforces portfolio constraints.
+agent. Each specialist receives a role-scoped view, so the business agent does not re-score price
+momentum and the synthesis agent receives conclusions rather than the raw model forecast again.
+Ordinary code validates candidate identity and citations, combines scores, and constructs the
+portfolio; the LLM cannot set weights or place trades.
 
-The live `v4` policy selects every candidate passing the 70-point quality gate, up to 20. If fewer
-than 10 qualify, it fills the remaining target slots from the highest-ranked candidates that have
-no hard safety blocker. If fewer than 10 safe candidates exist, the monthly decision still proceeds
-with the safe subset: every stock keeps its ten-slot weight and unused slots remain in cash. With
-10-20 selections, 99.8% of current portfolio equity is divided equally; 0.2% remains as an
-execution-cost reserve. There is no automatic SPY fallback. The dossier labels quality-gate
-selections separately from minimum-diversification top-ups.
+The prospective live `v5` policy selects every candidate passing the 70-point quality gate, up to
+20. If fewer than 10 qualify, it fills the remaining target slots from the highest-ranked candidates
+that have no hard safety blocker. If fewer than 10 safe candidates exist, the monthly decision still
+proceeds with the safe subset: every stock keeps its ten-slot weight and unused slots remain in
+cash. With 10-20 selections, 99.8% of current portfolio equity is divided equally; 0.2% remains as
+an execution-cost reserve. There is no automatic SPY fallback.
+
+Research quality and portfolio fit are deliberately separate. Council score alone determines the
+70-point gate. Within the same nearest-whole-point score bucket, a 126-session Ledoit-Wolf shrunk
+correlation estimate may reorder near-ties toward lower marginal correlation; sector count and raw
+score are deterministic tie-breakers. This rule cannot reject a stock, lower the number selected,
+or override a hard safety blocker. Every dossier records both quality rank and portfolio rank,
+pairwise-correlation diagnostics, selected-sector counts, and the reason for each top-up.
+
+The market and risk views now separate standard 12-to-1 and 6-to-1 skip-month momentum from the
+latest 21 days, 12-to-7-month performance, information discreteness, and 52-week-high proximity.
+These are tagged as one correlated `PRICE_MOMENTUM` evidence family so the agents cannot count each
+transformation as independent confirmation. Market 24-month return and 126-session variance are
+telemetry only: they do not automatically reduce exposure or block a candidate.
 
 Each immutable decision dossier contains the evidence available at the decision time, every agent's
 score, confidence, supporting points, concerns, citations, synthesis discussion, deterministic
@@ -82,7 +96,25 @@ fills, cost basis, realized and unrealized P&L, positions, and portfolio snapsho
 The optional Alpaca adapter remains disabled and cannot address Alpaca's live-trading domain.
 
 The published 2023-2025 and 2025 results above belong to the retained historical 5%-slot/SPY
-allocation experiment. They do not represent a backtest of the newer live `v4` allocation policy.
+allocation experiment. They do not represent a backtest of the newer live `v5` policy. Existing
+paper decisions remain immutable; the v5 rules apply only to decisions created after deployment.
+
+### Research basis for the live policy
+
+- [Kenneth French's momentum construction](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/det_mom_factor_daily.html)
+  ranks prior months 2-12, supporting the existing skip-month signal.
+- [Novy-Marx](https://www.sciencedirect.com/science/article/pii/S0304405X11001152)
+  motivates reporting the older 12-to-7-month component separately.
+- [Da, Gurun, and Warachka](https://academic.oup.com/rfs/article-abstract/27/7/2171/1578455)
+  motivates the information-discreteness return-path diagnostic.
+- [George and Hwang](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1540-6261.2004.00695.x)
+  is why proximity to a 52-week high is context rather than an overextension penalty.
+- [Ledoit and Wolf](https://www.ledoit.net/ole2.pdf) motivates shrinkage instead of an unstable
+  sample covariance matrix; [DeMiguel, Garlappi, and Uppal](https://doi.org/10.1093/rfs/hhm075)
+  supports retaining simple equal weights rather than fitting a fragile optimizer.
+- [Novy-Marx's multiple-signal backtesting paper](https://www.nber.org/papers/w21329) and the
+  [Deflated Sharpe Ratio](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2460551) motivate
+  predeclared shadow/walk-forward evaluation rather than tuning rules to the existing 2025 result.
 
 ## Backtest protocol
 
@@ -102,6 +134,8 @@ allocation experiment. They do not represent a backtest of the newer live `v4` a
 - Missing execution prices fail closed rather than silently dropping trades.
 - LLM outputs are schema-validated, candidate-bound, anonymous, and reproducibly cached.
 - Portfolio weights are assigned by deterministic code rather than the LLM.
+- Return-path, regime, and correlation additions are research-informed diagnostics and near-tie
+  controls; they are not yet evidence that v5 improves returns.
 - Some unavailable historical securities leave residual survivorship bias.
 - The Kronos checkpoint's training cutoff is not documented precisely enough for a causal claim.
 - The project observed 2025 while developing the system, so this is not an untouched holdout.
@@ -154,6 +188,8 @@ src/portfoliopilot/openai_bounded_agents.py           specialist structured revi
 src/portfoliopilot/openai_council_selector.py         bounded synthesis selection
 src/portfoliopilot/live_council.py                    live five-agent audit contracts and ranking
 src/portfoliopilot/openai_live_council.py             isolated named-stock structured LLM calls
+src/portfoliopilot/portfolio_construction.py           shrunk-correlation portfolio-fit audit
+src/portfoliopilot/live_policy.py                      prospective live policy identity
 src/portfoliopilot/live_evidence.py                    timestamped, candidate-bound news evidence
 src/portfoliopilot/alpaca_paper.py                     paper-only broker and news client
 src/portfoliopilot/alpaca_execution.py                 deterministic 5% paper rebalancing
@@ -208,9 +244,10 @@ process remains active to execute at the next open and continue normal monthly m
 
 The launcher prevents Windows sleep, starts the dashboard, and checks every 15 minutes. The service
 does nothing before the US close or when the current month already has a frozen decision. When a new
-month is due, it refreshes current S&P 500 histories, ranks up to 200 data-eligible stocks,
-passes the strongest 75 Kronos candidates to the council, and
-the five-agent council. It freezes the result and executes it once the next session's opening prices
+month is due, it refreshes current S&P 500 histories, ranks up to 200 data-eligible stocks, passes
+75 candidates selected by reliable Kronos forecasts (with deterministic fallback) to the five-agent
+council, and constructs the portfolio. It freezes the result and executes it once the next session's
+opening prices
 are available. Between rebalances it refreshes marks so the dashboard shows current simulated P&L.
 Logs are written to `private_data/live/`.
 
