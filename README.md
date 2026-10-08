@@ -23,35 +23,59 @@ performance.
 See the [readable decision report](results/kronos-llm-three-policies-2025.md) and
 [machine-readable results](results/kronos-llm-three-policies-2025.json).
 
-## How it works
+## How the current v5 system works
 
 ```text
 Point-in-time eligible S&P 500 members
                   |
-       deterministic Top 100
-  momentum | trend | growth | risk data
+       deterministic Top 200
+ momentum | trend | growth | quality | risk
                   |
-         Kronos Top 50
-       relative to SPY forecast
+   Kronos forecasts all 200 candidates
+       relative to an SPY forecast
                   |
-     +------------+------------+
-     |            |            |
- technical     quality       risk
- LLM agent     LLM agent     LLM agent
-     +------------+------------+
+   reliable Kronos Top 75 OR deterministic
+       Top 75 when the forecast guard fails
                   |
-        structured synthesis agent
-           selects 0-20 stocks
+  +---------------+---------------+
+  |               |               |
+market /       business /      news / filings
+technical      fundamentals     / catalysts
+LLM agent       LLM agent       LLM agent
+  |               |               |
+  +---------------+-------+-------+
+                          |
+                   risk / sentiment
+                      LLM agent
+                          |
+                structured synthesis agent
+             score >= 70; select up to 20
                   |
-       deterministic allocation
-   5% stock slots; unused weight -> SPY
+ portfolio-fit audit for whole-point score ties
+     Ledoit-Wolf shrunk correlation estimate
                   |
-        next-session-open execution
+ deterministic equal-weight allocation
+ no SPY fallback; 0.2% execution-cost reserve
+                  |
+ next-session-open execution for monthly decisions
+ current quote only for an explicitly initialized
+ comparison portfolio while the market is open
+                  |
+ append-only SQLite ledger + v4/v5 dashboard tabs
 ```
 
-The LLM receives anonymous, lagged numeric packets rather than company names. It cannot set
-position weights or bypass portfolio constraints. Structured Pydantic outputs are validated and
-hash-cached so interrupted runs resume without repeating completed API calls.
+The live council evaluates one named company per request. Each request contains point-in-time price
+features, SEC facts, timestamped news, market-regime telemetry, and the guarded Kronos signal. The
+LLM cannot choose position weights, bypass quality and safety gates, or place orders. Structured
+Pydantic outputs are candidate-bound, citation-validated, and hash-cached. Portfolio construction
+and paper execution remain deterministic Python code.
+
+Kronos is advisory rather than authoritative. It must forecast all 200 screened candidates, and
+its SPY and stock forecasts must pass bounded return and dispersion checks before its ranking can
+control admission to the Top 75. If the benchmark forecast is implausible, the system records the
+failure, assigns Kronos zero decision weight, and uses the deterministic Top 75. The October 2026
+forward-paper decision exercised this guard: Kronos completed 200 forecasts, but its extreme SPY
+forecast was rejected rather than presented as a valid trading signal.
 
 ## Live paper-trading council
 
@@ -85,9 +109,11 @@ telemetry only: they do not automatically reduce exposure or block a candidate.
 
 Each immutable decision dossier contains the evidence available at the decision time, every agent's
 score, confidence, supporting points, concerns, citations, synthesis discussion, deterministic
-ranking, selection outcome, and a human-readable Markdown report. The same structured dossier is
-designed to drive the future dashboard, preventing displayed explanations from diverging from the
-record used to construct paper orders.
+ranking, selection outcome, and a human-readable Markdown report. The same structured dossier
+drives the dashboard, preventing displayed explanations from diverging from the record used to
+construct paper orders. Separate tabs retain the existing v4 portfolio and the isolated v5
+comparison portfolio, each with its own starting capital, decisions, trades, cash, cost basis, and
+live mark-to-market P&L.
 
 The default forward-testing path uses an internal, broker-free simulator. It freezes the after-close
 council dossier and target weights, then executes once against supplied next-session opening prices
@@ -232,6 +258,16 @@ Run the complete forward-paper service and dashboard with one command:
 ```powershell
 .\scripts\run-live-paper.ps1 -Device auto
 ```
+
+Run the isolated v5 comparison ledger alongside the retained portfolio:
+
+```powershell
+.\scripts\run-v5-comparison.ps1 -IntervalSeconds 900
+```
+
+The dashboard exposes **Current portfolio (v4)** and **Research upgrade (v5)** tabs. Their databases,
+starting capital, decisions, fills, and P&L are independent, so evaluating v5 cannot rewrite the
+existing paper portfolio.
 
 For the first portfolio only, initialize immediately from the latest completed market close:
 
